@@ -1,14 +1,19 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import Badge from '../components/ui/Badge';
+import AddCollectorModal from '../components/ui/AddCollectorModal';
+import AssignZoneModal from '../components/ui/AssignZoneModal';
 import { getCollectors } from '../api/collectors';
 
 export default function Collectors() {
   const [collectorsData, setCollectorsData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [assignCollector, setAssignCollector] = useState(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchCollectors = async () => {
+  const fetchCollectors = async () => {
       try {
         const data = await getCollectors();
         setCollectorsData(data);
@@ -18,6 +23,8 @@ export default function Collectors() {
         setLoading(false);
       }
     };
+
+  useEffect(() => {
     fetchCollectors();
   }, []);
 
@@ -32,6 +39,7 @@ export default function Collectors() {
           <p className="text-sm text-gray-500">Manage field teams and zone assignments for Buea Municipality</p>
         </div>
         <button
+          onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg"
           style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
         >
@@ -56,16 +64,20 @@ export default function Collectors() {
           <div key={collector._id} className="bg-white rounded-card border border-card-border p-5 hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-semibold text-sm">
-                  {collector.name.split(' ').map((n) => n[0]).join('')}
-                </div>
+                {collector.avatar ? (
+                  <img src={collector.avatar} alt={collector.name} className="w-12 h-12 rounded-full object-cover" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-semibold text-sm">
+                    {collector.name.split(' ').map((n) => n[0]).join('')}
+                  </div>
+                )}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">{collector.name}</h3>
                   <p className="text-xs text-gray-500">{collector.truck}</p>
                 </div>
               </div>
-              <Badge variant={collector.status === 'active' ? 'success' : 'warning'}>
-                {collector.status === 'active' ? 'Active' : 'On Leave'}
+              <Badge variant={collector.status === 'active' ? 'success' : collector.status === 'inactive' ? 'danger' : 'warning'}>
+                {collector.status === 'active' ? 'Active' : collector.status === 'inactive' ? 'Inactive' : 'On Leave'}
               </Badge>
             </div>
 
@@ -90,12 +102,31 @@ export default function Collectors() {
             </div>
 
             <div className="flex gap-2">
-              <button className="flex-1 py-2 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">View Profile</button>
-              <button className="flex-1 py-2 border border-accent text-accent rounded-lg text-sm font-medium hover:bg-accent hover:text-white transition-colors">Assign Zone</button>
+              <button
+                onClick={() => navigate(`/collectors/${collector._id}`)}
+                className="flex-1 py-2 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >View Profile</button>
+              <button
+                onClick={() => setAssignCollector(collector)}
+                className="flex-1 py-2 border border-accent text-accent rounded-lg text-sm font-medium hover:bg-accent hover:text-white transition-colors"
+              >Assign Zone</button>
             </div>
           </div>
         ))}
       </div>
+
+      <AddCollectorModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCollectorAdded={fetchCollectors}
+      />
+
+      <AssignZoneModal
+        isOpen={!!assignCollector}
+        onClose={() => setAssignCollector(null)}
+        collector={assignCollector}
+        onUpdated={fetchCollectors}
+      />
     </div>
   );
 }

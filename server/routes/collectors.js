@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { getAllCollectors, getCollectorById, createCollector, updateCollector, deleteCollector } = require('../controllers/collectorController');
+const { getAllCollectors, getCollectorById, createCollector, updateCollector, deleteCollector, getMyRoute, updateMyAvatar } = require('../controllers/collectorController');
 const { protect, authorize } = require('../middleware/auth');
 
+router.get('/me/route', protect, getMyRoute);
+router.put('/me/avatar', protect, updateMyAvatar);
 router.get('/', protect, getAllCollectors);
 router.get('/:id', protect, getCollectorById);
 router.post('/', protect, authorize('admin'), createCollector);

@@ -8,6 +8,9 @@ import MapView from './pages/MapView';
 import Collectors from './pages/Collectors';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Chat from './pages/Chat';
+import CollectorProfile from './pages/CollectorProfile';
+import CommunityReports from './pages/CommunityReports';
 import Login from './pages/Login';
 import AddBinModal from './components/ui/AddBinModal';
 
@@ -35,7 +38,10 @@ function AppRoutes() {
           <Route path="/bins" element={<Bins onAddBin={() => setShowAddBin(true)} />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/collectors" element={<Collectors />} />
+          <Route path="/collectors/:id" element={<CollectorProfile />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/community-reports" element={<CommunityReports />} />
+          <Route path="/chat" element={<Chat />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
       </Routes>

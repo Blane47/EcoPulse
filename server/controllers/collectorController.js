@@ -1,4 +1,5 @@
 const Collector = require('../models/Collector');
+const Bin = require('../models/Bin');
 
 exports.getAllCollectors = async (req, res, next) => {
   try {
@@ -42,6 +43,34 @@ exports.updateCollector = async (req, res, next) => {
     });
     if (!collector) return res.status(404).json({ message: 'Collector not found' });
     res.json(collector);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getMyRoute = async (req, res, next) => {
+  try {
+    const collectorId = req.user._id;
+    const bins = await Bin.find({ assignedCollector: collectorId }).sort({ fillLevel: -1 });
+    res.json({ bins });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.updateMyAvatar = async (req, res, next) => {
+  try {
+    const { avatar } = req.body;
+    if (!avatar) return res.status(400).json({ message: 'Avatar image is required' });
+
+    const collector = await Collector.findByIdAndUpdate(
+      req.user._id,
+      { avatar },
+      { new: true }
+    );
+    if (!collector) return res.status(404).json({ message: 'Collector not found' });
+
+    res.json({ message: 'Avatar updated', avatar: collector.avatar });
   } catch (error) {
     next(error);
   }

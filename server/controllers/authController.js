@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Collector = require('../models/Collector');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -47,4 +48,27 @@ exports.login = async (req, res, next) => {
 
 exports.getMe = async (req, res) => {
   res.json(req.user);
+};
+
+exports.collectorLogin = async (req, res, next) => {
+  try {
+    const { phone, pin } = req.body;
+    if (!phone || !pin) {
+      return res.status(400).json({ message: 'Please provide phone and PIN' });
+    }
+
+    const collector = await Collector.findOne({ phone });
+    if (!collector || collector.pin !== pin) {
+      return res.status(401).json({ message: 'Invalid phone or PIN' });
+    }
+
+    if (collector.status === 'inactive') {
+      return res.status(403).json({ message: 'Your account has been deactivated. Contact your supervisor.' });
+    }
+
+    const token = generateToken(collector._id);
+    res.json({ user: collector, token });
+  } catch (error) {
+    next(error);
+  }
 };

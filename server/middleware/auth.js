@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const Collector = require('../models/Collector');
 
 const protect = async (req, res, next) => {
   try {
@@ -10,7 +11,12 @@ const protect = async (req, res, next) => {
 
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Try User first, then Collector
     req.user = await User.findById(decoded.id).select('-password');
+    if (!req.user) {
+      req.user = await Collector.findById(decoded.id);
+    }
 
     if (!req.user) {
       return res.status(401).json({ message: 'User not found' });

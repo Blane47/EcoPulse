@@ -5,8 +5,10 @@ import {
   Trash2,
   Users,
   BarChart3,
+  MessageSquare,
   Settings,
   LogOut,
+  Megaphone,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -16,6 +18,8 @@ const navItems = [
   { to: '/bins', icon: Trash2, label: 'Bins' },
   { to: '/collectors', icon: Users, label: 'Collectors' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
+  { to: '/community-reports', icon: Megaphone, label: 'Community' },
+  { to: '/chat', icon: MessageSquare, label: 'Chat' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
@@ -37,9 +41,7 @@ export default function Sidebar() {
       {/* Logo */}
       <div className="px-5 py-7">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-accent rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">E</span>
-          </div>
+          <img src="/logo.png" alt="EcoPulse" className="w-9 h-9 rounded-lg object-contain" />
           <div>
             <h1 className="text-white font-bold text-lg leading-tight">EcoPulse</h1>
             <p className="text-gray-500 text-[10px] uppercase tracking-wider">City Management</p>

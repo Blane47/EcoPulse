@@ -33,9 +33,7 @@ export default function Login() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-xl">E</span>
-            </div>
+            <img src="/logo.png" alt="EcoPulse" className="w-12 h-12 rounded-xl object-contain" />
             <div className="text-left">
               <h1 className="text-white font-bold text-2xl leading-tight">EcoPulse</h1>
               <p className="text-gray-500 text-xs uppercase tracking-wider">Smart Waste Management</p>
