@@ -4,15 +4,93 @@
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background-color: #f9fafb;
+  background-color: #edf1f7;
   color: #1f2937;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
   padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body,
+html.dark body {
+  background-color: #1a1d29;
+  color: #e5e7eb;
 }
 
 #root {
   min-height: 100vh;
   width: 100%;
+}
+
+/* Dark mode overrides */
+html.dark .bg-white { background-color: #222536 !important; }
+html.dark .bg-content-bg { background-color: #1a1d29 !important; }
+html.dark .bg-gray-50 { background-color: #2a2d3e !important; }
+html.dark .bg-gray-100 { background-color: #2a2d3e !important; }
+html.dark .bg-gray-50\/50 { background-color: rgba(42, 45, 62, 0.5) !important; }
+
+/* Borders */
+html.dark .border-card-border { border-color: #2a2d3e !important; }
+html.dark .border-gray-100 { border-color: #2a2d3e !important; }
+html.dark .border-gray-200 { border-color: #2a2d3e !important; }
+html.dark .border-gray-50 { border-color: #2a2d3e !important; }
+
+/* Text */
+html.dark .text-gray-900 { color: #f3f4f6 !important; }
+html.dark .text-gray-800 { color: #e5e7eb !important; }
+html.dark .text-gray-700 { color: #d1d5db !important; }
+html.dark .text-gray-600 { color: #9ca3af !important; }
+html.dark .text-gray-500 { color: #9ca3af !important; }
+html.dark .text-gray-400 { color: #6b7280 !important; }
+
+/* Sidebar dark */
+html.dark aside {
+  background-color: #1e2130 !important;
+  border-color: #2a2d3e !important;
+}
+html.dark aside .text-gray-500 { color: #6b7280 !important; }
+html.dark aside a.text-gray-500 { color: #9ca3af !important; }
+html.dark aside a:hover { background-color: #2a2d42 !important; }
+
+/* Navbar dark */
+html.dark header {
+  background-color: rgba(30, 33, 48, 0.85) !important;
+  border-color: #2a2d3e !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Input dark */
+html.dark input,
+html.dark select {
+  background-color: #2a2d3e !important;
+  border-color: #3a3d4e !important;
+  color: #e5e7eb !important;
+}
+html.dark input::placeholder { color: #6b7280 !important; }
+
+/* Card shadows in dark */
+html.dark .shadow-card { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3), 0 4px 24px rgba(0, 0, 0, 0.2) !important; }
+
+/* Table hover */
+html.dark tr:hover { background-color: #2a2d3e !important; }
+
+/* Dropdown / popup */
+html.dark .bg-white.rounded-xl,
+html.dark [class*="rounded-card"].bg-white,
+html.dark [class*="rounded-2xl"].bg-white {
+  background-color: #222536 !important;
+}
+
+/* Recharts */
+html.dark .recharts-cartesian-grid line { stroke: #2a2d3e !important; }
+html.dark .recharts-text { fill: #9ca3af !important; }
+
+/* Print styles for PDF export */
+@media print {
+  nav, header, aside, button { display: none !important; }
+  main, [class*="ml-"] { margin-left: 0 !important; width: 100% !important; }
+  body { background: white; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }

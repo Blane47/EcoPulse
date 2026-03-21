@@ -2,11 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, shadows } from '../theme';
+import { colors, getColors, gradients, shadows } from '../theme';
 import api from '../api/axios';
 
 export default function ChatScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, darkMode } = useAuth();
+  const c = getColors(darkMode);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
@@ -77,13 +78,13 @@ export default function ChatScreen({ navigation }) {
       <>
         {showDate && (
           <View style={styles.dateDivider}>
-            <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+            <Text style={[styles.dateText, { color: c.textMuted, backgroundColor: darkMode ? 'rgba(34,37,54,0.8)' : 'rgba(255,255,255,0.8)' }]}>{formatDate(item.createdAt)}</Text>
           </View>
         )}
         <View style={[styles.messageBubbleRow, isMe && styles.messageBubbleRowMe]}>
-          <View style={[styles.messageBubble, isMe ? styles.bubbleMe : styles.bubbleOther]}>
+          <View style={[styles.messageBubble, isMe ? styles.bubbleMe : [styles.bubbleOther, { backgroundColor: c.card, borderColor: c.cardBorder }]]}>
             {!isMe && <Text style={styles.senderLabel}>Admin</Text>}
-            <Text style={[styles.messageText, isMe && styles.messageTextMe]}>{item.text}</Text>
+            <Text style={[styles.messageText, { color: c.text }, isMe && styles.messageTextMe]}>{item.text}</Text>
             <Text style={[styles.timeText, isMe && styles.timeTextMe]}>{formatTime(item.createdAt)}</Text>
           </View>
         </View>
@@ -93,33 +94,33 @@ export default function ChatScreen({ navigation }) {
 
   if (loading) {
     return (
-      <LinearGradient colors={gradients.screenBg} style={styles.loadingContainer}>
+      <LinearGradient colors={darkMode ? gradients.screenBgDark : gradients.screenBg} style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.accent} />
       </LinearGradient>
     );
   }
 
   return (
-    <LinearGradient colors={gradients.screenBg} style={styles.container}>
+    <LinearGradient colors={darkMode ? gradients.screenBgDark : gradients.screenBg} style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: darkMode ? 'rgba(34,37,54,0.9)' : 'rgba(255,255,255,0.9)', borderBottomColor: c.cardBorder }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
-          <View style={styles.adminAvatar}>
+          <View style={[styles.adminAvatar, { backgroundColor: c.accentLight }]}>
             <Text style={styles.adminAvatarText}>A</Text>
           </View>
           <View>
-            <Text style={styles.headerTitle}>Admin Support</Text>
-            <Text style={styles.headerSubtitle}>EcoPulse HQ</Text>
+            <Text style={[styles.headerTitle, { color: c.text }]}>Admin Support</Text>
+            <Text style={[styles.headerSubtitle, { color: c.textMuted }]}>EcoPulse HQ</Text>
           </View>
         </View>
         <View style={styles.onlineDot} />
       </View>
 
       {/* Messages */}
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -130,19 +131,19 @@ export default function ChatScreen({ navigation }) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyTitle}>Start a conversation</Text>
-              <Text style={styles.emptySubtitle}>Send a message to your supervisor</Text>
+              <Text style={[styles.emptyTitle, { color: c.text }]}>Start a conversation</Text>
+              <Text style={[styles.emptySubtitle, { color: c.textMuted }]}>Send a message to your supervisor</Text>
             </View>
           }
         />
 
         {/* Input */}
-        <View style={styles.inputBar}>
-          <View style={styles.inputWrapper}>
+        <View style={[styles.inputBar, { backgroundColor: darkMode ? 'rgba(34,37,54,0.95)' : 'rgba(255,255,255,0.95)', borderTopColor: c.cardBorder }]}>
+          <View style={[styles.inputWrapper, { backgroundColor: darkMode ? '#2a2d3e' : '#f3f4f6' }]}>
             <TextInput
-              style={styles.input}
+              style={[styles.input, { color: c.text }]}
               placeholder="Type a message..."
-              placeholderTextColor={colors.textMuted}
+              placeholderTextColor={c.textMuted}
               value={text}
               onChangeText={setText}
               multiline
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingBottom: 28,
+    paddingBottom: 34,
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderTopWidth: 1,
     borderTopColor: colors.cardBorder,

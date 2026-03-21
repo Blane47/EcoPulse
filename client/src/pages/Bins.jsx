@@ -13,6 +13,10 @@ export default function Bins({ onAddBin }) {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [fillMin, setFillMin] = useState('');
+  const [fillMax, setFillMax] = useState('');
+  const [selectedBin, setSelectedBin] = useState(null);
   const perPage = 5;
 
   useEffect(() => {
@@ -81,12 +85,42 @@ export default function Bins({ onAddBin }) {
           <option value="optimal">Optimal</option>
           <option value="empty">Empty</option>
         </select>
-        <button className="flex items-center gap-1.5 px-3 py-2 border border-card-border rounded-lg text-sm text-gray-500 hover:bg-gray-50">
-          <Filter size={14} /> More Filters
+        <button
+          onClick={() => setShowMoreFilters(!showMoreFilters)}
+          className={`flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50 ${showMoreFilters ? 'border-accent text-accent' : 'border-card-border text-gray-500'}`}
+        >
+          <Filter size={14} /> {showMoreFilters ? 'Less Filters' : 'More Filters'}
         </button>
       </div>
 
-      <div className="bg-white rounded-card border border-card-border overflow-hidden">
+      {showMoreFilters && (
+        <div className="flex items-center gap-3 mb-4 bg-gray-50 p-3 rounded-lg border border-card-border">
+          <span className="text-xs font-medium text-gray-500">Fill Level:</span>
+          <input
+            type="number"
+            placeholder="Min %"
+            value={fillMin}
+            onChange={(e) => { setFillMin(e.target.value); setCurrentPage(1); }}
+            className="w-20 px-2 py-1.5 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+          <span className="text-gray-400">—</span>
+          <input
+            type="number"
+            placeholder="Max %"
+            value={fillMax}
+            onChange={(e) => { setFillMax(e.target.value); setCurrentPage(1); }}
+            className="w-20 px-2 py-1.5 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+          <button
+            onClick={() => { setFillMin(''); setFillMax(''); setZoneFilter(''); setTypeFilter(''); setStatusFilter(''); setCurrentPage(1); }}
+            className="ml-auto text-xs text-gray-500 hover:text-gray-700"
+          >
+            Clear all filters
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-card border border-card-border overflow-hidden shadow-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-card-border bg-gray-50/50">
@@ -111,7 +145,7 @@ export default function Bins({ onAddBin }) {
                 <td className="py-3 px-4 text-gray-500">{formatLastCollected(bin.lastCollected)}</td>
                 <td className="py-3 px-4 text-gray-600">{bin.assignedCollector?.name || '—'}</td>
                 <td className="py-3 px-4">
-                  <button className="text-accent hover:text-accent-dark text-xs font-medium">View</button>
+                  <button onClick={() => setSelectedBin(selectedBin?._id === bin._id ? null : bin)} className="text-accent hover:text-accent-dark text-xs font-medium">View</button>
                 </td>
               </tr>
             ))}
@@ -134,6 +168,64 @@ export default function Bins({ onAddBin }) {
           </div>
         </div>
       </div>
+      {/* Bin Detail Panel */}
+      {selectedBin && (
+        <div className="mt-4 bg-white rounded-card border border-card-border p-6 shadow-card">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-gray-900">{selectedBin.binId} — Details</h2>
+            <button onClick={() => setSelectedBin(null)} className="text-gray-400 hover:text-gray-600 text-sm">Close</button>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Location</p>
+              <p className="text-sm text-gray-700">{selectedBin.location}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Zone</p>
+              <p className="text-sm text-gray-700">{selectedBin.zone}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Type</p>
+              <p className="text-sm text-gray-700">{selectedBin.type || 'General'}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Status</p>
+              <Badge variant={selectedBin.status === 'critical' ? 'danger' : selectedBin.status === 'warning' ? 'warning' : 'success'}>
+                {selectedBin.status}
+              </Badge>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Fill Level</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-100 rounded-full h-3 overflow-hidden">
+                  <div
+                    className="h-3 rounded-full"
+                    style={{
+                      width: `${selectedBin.fillLevel}%`,
+                      backgroundColor: selectedBin.status === 'critical' ? '#ef4444' : selectedBin.status === 'warning' ? '#f59e0b' : '#22c55e',
+                    }}
+                  />
+                </div>
+                <span className="text-sm font-semibold text-gray-700">{selectedBin.fillLevel}%</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Coordinates</p>
+              <p className="text-sm text-gray-700 font-mono">
+                {selectedBin.coordinates?.lat?.toFixed(4)}, {selectedBin.coordinates?.lng?.toFixed(4)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Assigned Collector</p>
+              <p className="text-sm text-gray-700">{selectedBin.assignedCollector?.name || 'Unassigned'}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-gray-400 uppercase mb-1">Last Collected</p>
+              <p className="text-sm text-gray-700">{formatLastCollected(selectedBin.lastCollected)}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

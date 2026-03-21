@@ -4,8 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, shadows } from '../theme';
+import { colors, getColors, gradients, shadows } from '../theme';
 import api from '../api/axios';
+import GradientBrand from '../components/GradientBrand';
 
 function PerformanceCircle({ percentage = 94, size = 80, strokeWidth = 8 }) {
   const radius = (size - strokeWidth) / 2;
@@ -29,7 +30,8 @@ function PerformanceCircle({ percentage = 94, size = 80, strokeWidth = 8 }) {
 }
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, darkMode } = useAuth();
+  const c = getColors(darkMode);
   const [uploading, setUploading] = useState(false);
 
   const initials = (user?.name || 'C').split(' ').map((n) => n[0]).join('');
@@ -69,15 +71,15 @@ export default function ProfileScreen({ navigation }) {
   };
 
   return (
-    <LinearGradient colors={gradients.screenBgWarm} style={styles.container}>
+    <LinearGradient colors={darkMode ? gradients.screenBgDark : gradients.screenBgWarm} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation?.goBack?.()}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Profile</Text>
-          <Image source={require('../assets/images/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+          <Text style={[styles.headerTitle, { color: c.accent }]}>My Profile</Text>
+          <GradientBrand fontSize={16} />
         </View>
 
         {/* Profile Hero with real image */}
@@ -95,9 +97,9 @@ export default function ProfileScreen({ navigation }) {
           </View>
           <TouchableOpacity style={styles.avatarContainer} onPress={pickAvatar} activeOpacity={0.8}>
             {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
+              <Image source={{ uri: user.avatar }} style={[styles.avatarImage, { borderColor: c.card }]} />
             ) : (
-              <View style={styles.avatar}>
+              <View style={[styles.avatar, { backgroundColor: c.accentLight, borderColor: c.card }]}>
                 <Text style={styles.avatarText}>{initials}</Text>
               </View>
             )}
@@ -109,11 +111,11 @@ export default function ProfileScreen({ navigation }) {
               )}
             </View>
           </TouchableOpacity>
-          <Text style={styles.name}>{name}</Text>
+          <Text style={[styles.name, { color: c.text }]}>{name}</Text>
           <View style={styles.roleBadge}>
             <Text style={styles.roleText}>FIELD COLLECTOR</Text>
           </View>
-          <Text style={styles.meta}>{truck} · {zone} · <Text style={styles.activeStatus}>Active</Text></Text>
+          <Text style={[styles.meta, { color: c.textSecondary }]}>{truck} · {zone} · <Text style={styles.activeStatus}>Active</Text></Text>
         </View>
 
         {/* Stats Grid */}
@@ -124,25 +126,25 @@ export default function ProfileScreen({ navigation }) {
             { label: 'ISSUES LOGGED', value: '3' },
             { label: 'DAYS ACTIVE', value: '22' },
           ].map((stat) => (
-            <View key={stat.label} style={styles.statCard}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
+            <View key={stat.label} style={[styles.statCard, { backgroundColor: c.cardGlass, borderColor: c.cardBorder }]}>
+              <Text style={[styles.statLabel, { color: c.textMuted }]}>{stat.label}</Text>
+              <Text style={[styles.statValue, { color: c.text }]}>{stat.value}</Text>
             </View>
           ))}
         </View>
 
         {/* Performance */}
-        <View style={styles.perfSection}>
+        <View style={[styles.perfSection, { backgroundColor: c.cardGlass, borderColor: c.cardBorder }]}>
           <View style={styles.perfInfo}>
-            <Text style={styles.perfTitle}>Performance</Text>
-            <Text style={styles.perfSubtitle}>Operational efficiency score</Text>
+            <Text style={[styles.perfTitle, { color: c.text }]}>Performance</Text>
+            <Text style={[styles.perfSubtitle, { color: c.textSecondary }]}>Operational efficiency score</Text>
           </View>
           <PerformanceCircle percentage={94} />
         </View>
 
         {/* Featured Collection */}
         <View style={styles.featuredSection}>
-          <Text style={styles.featuredLabel}>FEATURED COLLECTION</Text>
+          <Text style={[styles.featuredLabel, { color: c.textMuted }]}>FEATURED COLLECTION</Text>
           <View style={styles.featuredCard}>
             <ImageBackground
               source={require('../assets/images/truck-featured.png')}
@@ -161,13 +163,13 @@ export default function ProfileScreen({ navigation }) {
         </View>
 
         {/* Contact Supervisor */}
-        <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Chat')}>
+        <TouchableOpacity style={[styles.contactButton, { backgroundColor: c.accentMist }]} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Chat')}>
           <Text style={styles.contactText}>💬 Chat with Admin</Text>
         </TouchableOpacity>
 
         {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>🔓 Log Out</Text>
+          <Text style={[styles.logoutText, { color: c.textSecondary }]}>🔓 Log Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
@@ -176,7 +178,7 @@ export default function ProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
+  scrollContent: { paddingBottom: 120 },
 
   // Header
   header: {

@@ -7,14 +7,17 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadAuth = async () => {
-      const [storedToken, storedUser] = await AsyncStorage.multiGet([
+      const [storedToken, storedUser, storedDark] = await AsyncStorage.multiGet([
         'collector_token',
         'collector_user',
+        'collector_dark',
       ]);
+      if (storedDark[1] === 'true') setDarkMode(true);
       if (storedToken[1] && storedUser[1]) {
         setToken(storedToken[1]);
         const localUser = JSON.parse(storedUser[1]);
@@ -61,8 +64,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const toggleDarkMode = async () => {
+    const newVal = !darkMode;
+    setDarkMode(newVal);
+    await AsyncStorage.setItem('collector_dark', newVal.toString());
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, authenticated: !!token, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, authenticated: !!token, loading, login, logout, updateUser, darkMode, toggleDarkMode }}>
       {children}
     </AuthContext.Provider>
   );

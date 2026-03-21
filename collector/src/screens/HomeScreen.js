@@ -3,14 +3,15 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl, Ima
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, shadows } from '../theme';
+import { colors, getColors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
 import api from '../api/axios';
 
 const truckBanner = require('../assets/images/truck-banner.png');
 
 export default function HomeScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, darkMode } = useAuth();
+  const c = getColors(darkMode);
   const [stats, setStats] = useState({ assigned: 0, collected: 0, remaining: 0 });
   const [priorityBins, setPriorityBins] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -72,7 +73,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <LinearGradient colors={gradients.screenBg} style={styles.container}>
+    <LinearGradient colors={darkMode ? gradients.screenBgDark : gradients.screenBg} style={styles.container}>
       <FlatList
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListHeaderComponent={
@@ -88,7 +89,7 @@ export default function HomeScreen({ navigation }) {
                   </Text>
                 </View>
               )}
-              <Text style={styles.greetingText}>
+              <Text style={[styles.greetingText, { color: c.text }]}>
                 {greeting()}, {user?.name?.split(' ')[0] || 'Collector'} 👋🌿
               </Text>
             </View>
@@ -150,19 +151,19 @@ export default function HomeScreen({ navigation }) {
                 { icon: '✅', label: 'COLLECTED', value: stats.collected, color: colors.accent },
                 { icon: '⏳', label: 'REMAINING', value: stats.remaining, color: colors.warning },
               ].map((stat) => (
-                <View key={stat.label} style={styles.statCard}>
+                <View key={stat.label} style={[styles.statCard, { backgroundColor: c.cardGlass, borderColor: c.cardBorder }]}>
                   <Text style={styles.statIcon}>{stat.icon}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text style={[styles.statLabel, { color: c.textMuted }]}>{stat.label}</Text>
                   <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
                 </View>
               ))}
             </View>
 
             {/* Progress Bar */}
-            <View style={styles.progressContainer}>
+            <View style={[styles.progressContainer, { backgroundColor: c.cardGlass, borderColor: c.cardBorder }]}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressTitle}>Today's Progress — {progressPct}% Complete</Text>
-                <Text style={styles.progressCount}>{stats.collected}/{stats.assigned} Bins</Text>
+                <Text style={[styles.progressTitle, { color: c.text }]}>Today's Progress — {progressPct}% Complete</Text>
+                <Text style={[styles.progressCount, { color: c.textMuted }]}>{stats.collected}/{stats.assigned} Bins</Text>
               </View>
               <View style={styles.progressBar}>
                 <LinearGradient
@@ -178,7 +179,7 @@ export default function HomeScreen({ navigation }) {
             {priorityBins.length > 0 && (
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
-                  <Text style={styles.sectionTitle}>Priority Bins</Text>
+                  <Text style={[styles.sectionTitle, { color: c.text }]}>Priority Bins</Text>
                   <Text style={styles.sectionDot}> 🔴</Text>
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('Route')}>
@@ -192,7 +193,7 @@ export default function HomeScreen({ navigation }) {
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
           <TouchableOpacity
-            style={styles.binCard}
+            style={[styles.binCard, { backgroundColor: c.cardGlass, borderColor: c.cardBorder }]}
             onPress={() => navigation.navigate('BinDetail', { id: item._id })}
             activeOpacity={0.7}
           >
@@ -200,8 +201,8 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.binCardLeft}>
                 <Image source={require('../assets/images/bin-icon.png')} style={styles.binIconImage} resizeMode="cover" />
                 <View style={styles.binInfo}>
-                  <Text style={styles.binId}>{item.binId}</Text>
-                  <Text style={styles.binDistance}>📍 {item.distance || '0.3km'} away</Text>
+                  <Text style={[styles.binId, { color: c.text }]}>{item.binId}</Text>
+                  <Text style={[styles.binDistance, { color: c.textSecondary }]}>📍 {item.distance || '0.3km'} away</Text>
                 </View>
               </View>
               <View style={styles.binCardRight}>
@@ -227,7 +228,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           ) : null
         }
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       />
     </LinearGradient>
   );

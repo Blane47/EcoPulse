@@ -1,25 +1,27 @@
 export default function StatCard({ icon, label, value, trend, trendUp, color = 'green' }) {
   const colorMap = {
-    green: 'bg-green-50 text-accent',
-    blue: 'bg-blue-50 text-blue-500',
-    red: 'bg-red-50 text-critical',
-    yellow: 'bg-yellow-50 text-warning',
+    green: { bg: 'bg-green-50', text: 'text-green-600', icon: 'bg-green-100 text-green-600' },
+    blue: { bg: 'bg-blue-50', text: 'text-blue-600', icon: 'bg-blue-100 text-blue-600' },
+    red: { bg: 'bg-red-50', text: 'text-red-600', icon: 'bg-red-100 text-red-600' },
+    yellow: { bg: 'bg-amber-50', text: 'text-amber-600', icon: 'bg-amber-100 text-amber-600' },
   };
 
+  const c = colorMap[color] || colorMap.green;
+
   return (
-    <div className="bg-white rounded-card border border-card-border p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
-        {icon}
+    <div className="bg-white rounded-2xl border border-card-border p-6 shadow-card hover:shadow-card-hover transition-shadow">
+      <div className="flex items-center justify-between mb-4">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${c.icon}`}>
+          {icon}
+        </div>
+        <p className="text-sm text-gray-400 font-medium">{label}</p>
       </div>
-      <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        {trend && (
-          <p className={`text-xs mt-0.5 ${trendUp ? 'text-accent' : 'text-critical'}`}>
-            {trendUp ? '↑' : '↓'} {trend}
-          </p>
-        )}
-      </div>
+      {trend && (
+        <p className={`text-xs font-semibold mb-1 ${trendUp ? 'text-green-500' : 'text-red-500'}`}>
+          📈 {trend}
+        </p>
+      )}
+      <p className="text-3xl font-bold text-gray-900 tracking-tight">{value}</p>
     </div>
   );
 }

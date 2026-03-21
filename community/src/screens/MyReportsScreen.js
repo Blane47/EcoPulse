@@ -3,13 +3,15 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, getColors } from '../theme';
 import api from '../api/axios';
+import GradientBrand from '../components/GradientBrand';
 
 const TABS = ['Notifications', 'My Reports'];
 
 export default function MyReportsScreen({ navigation }) {
-  const { language, profile } = useZone();
+  const { language, profile, darkMode } = useZone();
+  const c = getColors(darkMode);
   const en = language === 'en';
   const [activeTab, setActiveTab] = useState('My Reports');
   const [reports, setReports] = useState([]);
@@ -35,9 +37,9 @@ export default function MyReportsScreen({ navigation }) {
   );
 
   const statusConfig = {
-    pending: { label: en ? 'Pending' : 'En attente', color: colors.warning },
+    pending: { label: en ? 'Pending' : 'En attente', color: c.warning },
     reviewed: { label: en ? 'Under Review' : 'En cours', color: '#3b82f6' },
-    collected: { label: en ? 'Collected' : 'Collecté', color: colors.accent },
+    collected: { label: en ? 'Collected' : 'Collecté', color: c.accent },
   };
 
   const formatDate = (dateStr) => {
@@ -46,34 +48,31 @@ export default function MyReportsScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image source={require('../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.brandText}>EcoPulse</Text>
-        </View>
+        <GradientBrand fontSize={20} />
         <TouchableOpacity>
           <Text style={{ fontSize: 18 }}>🗑️</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.pageTitle}>
+      <Text style={[styles.pageTitle, { color: c.text }]}>
         {en ? 'Updates / Notifications' : 'Mises à jour / Notifications'}
       </Text>
-      <Text style={styles.pageSubtitle}>
+      <Text style={[styles.pageSubtitle, { color: c.textSecondary }]}>
         {en ? 'Stay updated with your local impact' : 'Restez informé de votre impact local'}
       </Text>
 
       {/* Tabs */}
-      <View style={styles.tabsRow}>
+      <View style={[styles.tabsRow, { borderBottomColor: c.cardBorder }]}>
         {TABS.map((tab) => (
           <TouchableOpacity
             key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
+            style={[styles.tab, activeTab === tab && { borderBottomColor: c.accent }]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: c.textMuted }, activeTab === tab && { color: c.text, fontWeight: '700' }]}>
               {tab}
             </Text>
           </TouchableOpacity>
@@ -84,7 +83,7 @@ export default function MyReportsScreen({ navigation }) {
         <FlatList
           data={reports}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}
+          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 20 }}
           ListHeaderComponent={
             <>
               {/* Community Hero Badge */}
@@ -107,19 +106,19 @@ export default function MyReportsScreen({ navigation }) {
                 </View>
               </LinearGradient>
 
-              <Text style={styles.sectionTitle}>RECENT REPORTS</Text>
+              <Text style={[styles.sectionTitle, { color: c.textMuted }]}>RECENT REPORTS</Text>
             </>
           }
           renderItem={({ item }) => {
             const sc = statusConfig[item.status] || statusConfig.pending;
             return (
-              <View style={styles.reportCard}>
-                <View style={styles.reportImagePlaceholder}>
+              <View style={[styles.reportCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
+                <View style={[styles.reportImagePlaceholder, { backgroundColor: c.background }]}>
                   <Text style={{ fontSize: 28 }}>🗑️</Text>
                 </View>
                 <View style={styles.reportInfo}>
-                  <Text style={styles.reportLocation}>{item.location}</Text>
-                  <Text style={styles.reportDate}>{formatDate(item.createdAt)}</Text>
+                  <Text style={[styles.reportLocation, { color: c.text }]}>{item.location}</Text>
+                  <Text style={[styles.reportDate, { color: c.textSecondary }]}>{formatDate(item.createdAt)}</Text>
                 </View>
                 <Text style={[styles.reportStatus, { color: sc.color }]}>{sc.label}</Text>
               </View>
@@ -143,7 +142,7 @@ export default function MyReportsScreen({ navigation }) {
             !loading && (
               <View style={styles.empty}>
                 <Text style={{ fontSize: 28, marginBottom: 8 }}>📋</Text>
-                <Text style={styles.emptyText}>{en ? 'No reports yet' : 'Aucun signalement'}</Text>
+                <Text style={[styles.emptyText, { color: c.textMuted }]}>{en ? 'No reports yet' : 'Aucun signalement'}</Text>
                 <TouchableOpacity style={styles.reportBtn} onPress={() => navigation.navigate('ReportBin')}>
                   <Text style={styles.reportBtnText}>{en ? 'Report a Bin' : 'Signaler un Bac'}</Text>
                 </TouchableOpacity>
@@ -154,10 +153,10 @@ export default function MyReportsScreen({ navigation }) {
       ) : (
         <View style={styles.notificationsEmpty}>
           <Text style={{ fontSize: 40, marginBottom: 12 }}>🔔</Text>
-          <Text style={styles.notificationsEmptyText}>
+          <Text style={[styles.notificationsEmptyText, { color: c.text }]}>
             {en ? 'No new notifications' : 'Pas de nouvelles notifications'}
           </Text>
-          <Text style={styles.notificationsEmptySub}>
+          <Text style={[styles.notificationsEmptySub, { color: c.textSecondary }]}>
             {en
               ? "We'll notify you about collection updates in your zone"
               : 'Nous vous informerons des mises à jour de collecte dans votre zone'}
@@ -190,13 +189,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-  },
-  brandText: { fontSize: 18, fontWeight: '800', color: colors.accent },
+  brandText: { fontSize: 22, fontWeight: '900', color: '#1a3c3c', letterSpacing: 5, fontFamily: 'monospace' },
 
   pageTitle: { fontSize: 24, fontWeight: '800', color: colors.text, paddingHorizontal: 20 },
   pageSubtitle: { fontSize: 13, color: colors.textSecondary, paddingHorizontal: 20, marginTop: 4, marginBottom: 20 },
@@ -313,7 +306,7 @@ const styles = StyleSheet.create({
   // Floating Action Button
   fab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 110,
     right: 20,
     width: 56,
     height: 56,

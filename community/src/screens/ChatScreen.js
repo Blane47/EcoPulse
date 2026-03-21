@@ -4,11 +4,12 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, getColors } from '../theme';
 import api from '../api/axios';
 
 export default function ChatScreen() {
-  const { profile, language } = useZone();
+  const { profile, language, darkMode } = useZone();
+  const c = getColors(darkMode);
   const en = language === 'en';
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
@@ -79,13 +80,13 @@ export default function ChatScreen() {
       <>
         {showDate && (
           <View style={styles.dateBadge}>
-            <Text style={styles.dateBadgeText}>{formatDate(item.createdAt)}</Text>
+            <Text style={[styles.dateBadgeText, { color: c.textMuted, backgroundColor: c.card }]}>{formatDate(item.createdAt)}</Text>
           </View>
         )}
-        <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
-          {!isMe && <Text style={styles.senderName}>Admin</Text>}
-          <Text style={[styles.messageText, isMe && styles.myMessageText]}>{item.text}</Text>
-          <Text style={[styles.messageTime, isMe && styles.myMessageTime]}>{formatTime(item.createdAt)}</Text>
+        <View style={[styles.messageBubble, isMe ? [styles.myBubble, { backgroundColor: c.accent }] : [styles.theirBubble, { backgroundColor: c.card, borderColor: c.cardBorder }]]}>
+          {!isMe && <Text style={[styles.senderName, { color: c.accent }]}>Admin</Text>}
+          <Text style={[styles.messageText, { color: c.text }, isMe && styles.myMessageText]}>{item.text}</Text>
+          <Text style={[styles.messageTime, { color: c.textMuted }, isMe && styles.myMessageTime]}>{formatTime(item.createdAt)}</Text>
         </View>
       </>
     );
@@ -93,26 +94,26 @@ export default function ChatScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.accent} />
+      <View style={[styles.loadingContainer, { backgroundColor: c.background }]}>
+        <ActivityIndicator size="large" color={c.accent} />
       </View>
     );
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      style={[styles.container, { backgroundColor: c.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerAvatar}>
+      <View style={[styles.header, { backgroundColor: c.card, borderBottomColor: c.cardBorder }]}>
+        <View style={[styles.headerAvatar, { backgroundColor: c.accentLight }]}>
           <Text style={{ fontSize: 18 }}>🛡️</Text>
         </View>
         <View>
-          <Text style={styles.headerTitle}>{en ? 'Admin Support' : 'Support Admin'}</Text>
-          <Text style={styles.headerSub}>{en ? 'Usually replies within an hour' : 'Répond généralement dans l\'heure'}</Text>
+          <Text style={[styles.headerTitle, { color: c.text }]}>{en ? 'Admin Support' : 'Support Admin'}</Text>
+          <Text style={[styles.headerSub, { color: c.textMuted }]}>{en ? 'Usually replies within an hour' : 'Répond généralement dans l\'heure'}</Text>
         </View>
       </View>
 
@@ -120,8 +121,8 @@ export default function ChatScreen() {
       {messages.length === 0 ? (
         <View style={styles.emptyContainer}>
           <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
-          <Text style={styles.emptyTitle}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
-          <Text style={styles.emptySub}>
+          <Text style={[styles.emptyTitle, { color: c.text }]}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
+          <Text style={[styles.emptySub, { color: c.textSecondary }]}>
             {en
               ? 'Report issues, ask questions, or give feedback to the city admin.'
               : 'Signalez des problèmes, posez des questions ou donnez votre avis à l\'admin.'}
@@ -139,11 +140,11 @@ export default function ChatScreen() {
       )}
 
       {/* Input */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { backgroundColor: c.card, borderTopColor: c.cardBorder }]}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { backgroundColor: c.background, color: c.text, borderColor: c.cardBorder }]}
           placeholder={en ? 'Type a message...' : 'Tapez un message...'}
-          placeholderTextColor={colors.textMuted}
+          placeholderTextColor={c.textMuted}
           value={text}
           onChangeText={setText}
           multiline
@@ -177,7 +178,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 14,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.cardBorder,
   },
@@ -248,8 +249,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingBottom: 30,
-    backgroundColor: '#fff',
+    paddingBottom: 34,
+    backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.cardBorder,
   },

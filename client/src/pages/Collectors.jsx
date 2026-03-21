@@ -61,7 +61,7 @@ export default function Collectors() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {collectorsData.map((collector) => (
-          <div key={collector._id} className="bg-white rounded-card border border-card-border p-5 hover:shadow-md transition-shadow">
+          <div key={collector._id} className="bg-white rounded-card border border-card-border p-5 shadow-card hover:shadow-card-hover transition-shadow">
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 {collector.avatar ? (

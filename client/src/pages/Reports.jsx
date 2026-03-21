@@ -10,6 +10,63 @@ import {
   overdueBinsByZone, collectors,
 } from '../data/mockData';
 
+function downloadCSV() {
+  // Build CSV from all report data
+  let csv = 'EcoPulse Reports & Analytics\n\n';
+
+  // KPIs
+  csv += 'KEY METRICS\n';
+  csv += 'Metric,Value\n';
+  csv += `Total Collections,${reportKPIs.totalCollections}\n`;
+  csv += `Average Fill,${reportKPIs.avgFill}%\n`;
+  csv += `Zones at Risk,${reportKPIs.zonesAtRisk}\n`;
+  csv += `Total Collected,${reportKPIs.totalCollected}\n\n`;
+
+  // Daily trends
+  csv += 'DAILY COLLECTION TRENDS\n';
+  csv += 'Day,Actual,Scheduled\n';
+  dailyCollectionTrends.forEach(d => {
+    csv += `${d.day},${d.actual},${d.scheduled}\n`;
+  });
+  csv += '\n';
+
+  // Bin type distribution
+  csv += 'BIN TYPE DISTRIBUTION\n';
+  csv += 'Type,Percentage\n';
+  binTypeDistribution.forEach(b => {
+    csv += `${b.name},${b.value}%\n`;
+  });
+  csv += '\n';
+
+  // Overdue bins
+  csv += 'OVERDUE BINS BY ZONE\n';
+  csv += 'Zone,Overdue Bins\n';
+  overdueBinsByZone.forEach(z => {
+    csv += `${z.zone},${z.bins}\n`;
+  });
+  csv += '\n';
+
+  // Collector performance
+  csv += 'COLLECTOR PERFORMANCE\n';
+  csv += 'Name,Bins,Month,Efficiency\n';
+  collectors.forEach(c => {
+    csv += `${c.name},${c.bins},${c.month},${c.efficiency}%\n`;
+  });
+
+  // Download
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `ecopulse-report-${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF() {
+  window.print();
+}
+
 export default function Reports() {
   return (
     <div>
@@ -20,11 +77,15 @@ export default function Reports() {
           <p className="text-sm text-gray-500">Track collection performance and zone efficiency across the city</p>
         </div>
         <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+          <button
+            onClick={downloadCSV}
+            className="flex items-center gap-2 px-4 py-2.5 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+          >
             <Download size={16} />
             Download CSV
           </button>
           <button
+            onClick={exportPDF}
             className="flex items-center gap-2 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg"
             style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
           >
@@ -65,7 +126,7 @@ export default function Reports() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         {/* Daily Collection Trends */}
-        <div className="lg:col-span-2 bg-white rounded-card border border-card-border p-5">
+        <div className="lg:col-span-2 bg-white rounded-card border border-card-border p-5 shadow-card">
           <h2 className="text-sm font-semibold text-gray-900 mb-1">Daily Collection Trends</h2>
           <p className="text-xs text-gray-400 mb-4">Scheduled vs actual performance — March 2025</p>
           <ResponsiveContainer width="100%" height={260}>
@@ -97,7 +158,7 @@ export default function Reports() {
         </div>
 
         {/* Bin Type Distribution */}
-        <div className="bg-white rounded-card border border-card-border p-5">
+        <div className="bg-white rounded-card border border-card-border p-5 shadow-card">
           <h2 className="text-sm font-semibold text-gray-900 mb-1">Bin Type Distribution</h2>
           <p className="text-xs text-gray-400 mb-4">Waste category breakdown</p>
           <ResponsiveContainer width="100%" height={200}>
@@ -132,7 +193,7 @@ export default function Reports() {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Overdue Bins by Zone */}
-        <div className="bg-white rounded-card border border-card-border p-5">
+        <div className="bg-white rounded-card border border-card-border p-5 shadow-card">
           <h2 className="text-sm font-semibold text-gray-900 mb-1">Overdue Bins by Zone</h2>
           <p className="text-xs text-gray-400 mb-4">Real-time alerts for collection delay</p>
           <div className="space-y-3">
@@ -153,7 +214,7 @@ export default function Reports() {
         </div>
 
         {/* Collector Performance */}
-        <div className="bg-white rounded-card border border-card-border p-5">
+        <div className="bg-white rounded-card border border-card-border p-5 shadow-card">
           <h2 className="text-sm font-semibold text-gray-900 mb-1">Collector Performance</h2>
           <p className="text-xs text-gray-400 mb-4">Efficiency metrics for this month</p>
           <table className="w-full text-sm">

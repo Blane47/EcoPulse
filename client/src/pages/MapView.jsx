@@ -1,33 +1,17 @@
-import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Badge from '../components/ui/Badge';
-import { getBins } from '../api/bins';
+import { getBins, updateBin } from '../api/bins';
 import { zoneOverview } from '../data/mockData';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-});
-
-const createBinIcon = (status) => {
-  const colors = { critical: '#ef4444', warning: '#f59e0b', optimal: '#22c55e', empty: '#22c55e' };
-  return L.divIcon({
-    className: 'custom-bin-marker',
-    html: `<div style="width:24px;height:24px;border-radius:50%;background:${colors[status] || '#22c55e'};border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
-  });
-};
-
-const BUEA_CENTER = [4.155, 9.265];
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || '';
 
 export default function MapView() {
+  const navigate = useNavigate();
+  const mapContainer = useRef(null);
   const [bins, setBins] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
     const fetchBins = async () => {
@@ -49,12 +33,198 @@ export default function MapView() {
     return 'success';
   };
 
+  const handleMarkCollected = async (bin) => {
+    try {
+      await updateBin(bin._id, { fillLevel: 0, status: 'empty', lastCollected: new Date() });
+      setBins(prev => prev.map(b => b._id === bin._id ? { ...b, fillLevel: 0, status: 'empty' } : b));
+    } catch (err) {
+      console.error('Failed to mark collected:', err);
+    }
+  };
+
+  // Build map HTML for iframe
+  const mapHTML = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+      <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+      <style>
+        * { margin: 0; padding: 0; }
+        body { overflow: hidden; }
+        #map { width: 100%; height: 100vh; }
+        .mapboxgl-ctrl-attrib { display: none !important; }
+        .mapboxgl-popup-content {
+          border-radius: 16px;
+          padding: 16px 18px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+          min-width: 220px;
+          font-family: Inter, system-ui, sans-serif;
+        }
+        .mapboxgl-popup-close-button {
+          font-size: 20px;
+          padding: 4px 10px;
+          color: #9ca3af;
+        }
+        .bin-id { font-size: 15px; font-weight: 700; color: #111827; margin-bottom: 2px; }
+        .bin-loc { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+        .bin-meta { font-size: 12px; color: #6b7280; margin-bottom: 10px; }
+        .bin-meta span { font-weight: 600; }
+        .btn-row { display: flex; gap: 8px; }
+        .btn-collect {
+          flex: 1; padding: 8px 0; border-radius: 10px; border: none; cursor: pointer;
+          font-size: 12px; font-weight: 600; background: #111827; color: #fff;
+        }
+        .btn-logistics {
+          flex: 1; padding: 8px 0; border-radius: 10px; cursor: pointer;
+          font-size: 12px; font-weight: 600; background: #fff; color: #4b5563;
+          border: 1px solid #e5e7eb;
+        }
+        .status-pill {
+          display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 10px;
+          border-radius: 12px; text-transform: uppercase;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="map"></div>
+      <script>
+        mapboxgl.accessToken = '${MAPBOX_TOKEN}';
+        const map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/mapbox/light-v11',
+          center: [9.265, 4.155],
+          zoom: 13,
+          attributionControl: false,
+        });
+
+        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+        const bins = ${JSON.stringify(filtered.filter(b => b.coordinates?.lat).map(bin => ({
+          id: bin._id,
+          binId: bin.binId,
+          location: bin.location,
+          zone: bin.zone,
+          fillLevel: bin.fillLevel,
+          status: bin.status,
+          lat: bin.coordinates.lat,
+          lng: bin.coordinates.lng,
+        })))};
+
+        map.on('load', () => {
+          const geojson = {
+            type: 'FeatureCollection',
+            features: bins.map(bin => ({
+              type: 'Feature',
+              properties: bin,
+              geometry: { type: 'Point', coordinates: [bin.lng, bin.lat] },
+            })),
+          };
+
+          map.addSource('bins', { type: 'geojson', data: geojson });
+
+          map.addLayer({
+            id: 'bins-glow',
+            type: 'circle',
+            source: 'bins',
+            paint: {
+              'circle-radius': 20,
+              'circle-color': ['match', ['get', 'status'],
+                'critical', '#ef4444',
+                'warning', '#f59e0b',
+                '#22c55e'
+              ],
+              'circle-opacity': 0.12,
+            },
+          });
+
+          map.addLayer({
+            id: 'bins-circle',
+            type: 'circle',
+            source: 'bins',
+            paint: {
+              'circle-radius': 8,
+              'circle-color': ['match', ['get', 'status'],
+                'critical', '#ef4444',
+                'warning', '#f59e0b',
+                '#22c55e'
+              ],
+              'circle-stroke-width': 3,
+              'circle-stroke-color': '#ffffff',
+            },
+          });
+
+          map.addLayer({
+            id: 'bins-label',
+            type: 'symbol',
+            source: 'bins',
+            layout: {
+              'text-field': ['get', 'binId'],
+              'text-size': 10,
+              'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+              'text-offset': [0, 1.6],
+            },
+            paint: {
+              'text-color': '#374151',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1.5,
+            },
+          });
+
+          map.on('click', 'bins-circle', (e) => {
+            const f = e.features[0];
+            const p = f.properties;
+            const coords = f.geometry.coordinates.slice();
+            const statusColor = p.status === 'critical' ? '#fee2e2' : p.status === 'warning' ? '#fef3c7' : '#dcfce7';
+            const statusTextColor = p.status === 'critical' ? '#b91c1c' : p.status === 'warning' ? '#a16207' : '#15803d';
+
+            new mapboxgl.Popup({ offset: 15, maxWidth: '280px' })
+              .setLngLat(coords)
+              .setHTML(
+                '<div class="bin-id">' + p.binId + '</div>' +
+                '<div class="bin-loc">' + p.location + ', ' + p.zone + '</div>' +
+                '<div class="bin-meta">' +
+                  '<span class="status-pill" style="background:' + statusColor + ';color:' + statusTextColor + '">' + p.status + '</span>' +
+                  ' &middot; Fill: ' + p.fillLevel + '%' +
+                '</div>' +
+                '<div class="btn-row">' +
+                  '<button class="btn-collect" onclick="parent.postMessage({type:\\'collect\\',id:\\'' + p.id + '\\'},'*\\')">Mark Collected</button>' +
+                  '<button class="btn-logistics" onclick="parent.postMessage({type:\\'logistics\\',zone:\\'' + p.zone + '\\'},'*\\')">Logistics</button>' +
+                '</div>'
+              )
+              .addTo(map);
+          });
+
+          map.on('mouseenter', 'bins-circle', () => map.getCanvas().style.cursor = 'pointer');
+          map.on('mouseleave', 'bins-circle', () => map.getCanvas().style.cursor = '');
+        });
+      </script>
+    </body>
+    </html>
+  `;
+
+  // Listen for messages from the map iframe
+  useEffect(() => {
+    const handleMessage = (e) => {
+      if (e.data?.type === 'collect') {
+        const bin = bins.find(b => b._id === e.data.id);
+        if (bin) handleMarkCollected(bin);
+      } else if (e.data?.type === 'logistics') {
+        navigate(`/bins?zone=${e.data.zone}`);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [bins]);
+
   return (
-    <div style={{ display: 'flex', margin: '-24px', height: 'calc(100vh - 64px)' }}>
+    <div style={{ display: 'flex', margin: '-32px', height: 'calc(100vh - 64px)' }}>
       {/* Map Area */}
       <div style={{ flex: 1, position: 'relative' }}>
-        {/* Filter Pills — positioned below zoom controls */}
-        <div style={{ position: 'absolute', top: 12, left: 60, zIndex: 1000, display: 'flex', gap: 8 }}>
+        {/* Filter Pills */}
+        <div style={{ position: 'absolute', top: 16, left: 16, zIndex: 10, display: 'flex', gap: 8 }}>
           {[
             { key: 'all', label: 'All Bins' },
             { key: 'critical', label: 'Critical' },
@@ -65,14 +235,15 @@ export default function MapView() {
               key={f.key}
               onClick={() => setFilter(f.key)}
               style={{
-                padding: '6px 14px',
-                borderRadius: 20,
+                padding: '8px 16px',
+                borderRadius: 24,
                 fontSize: 12,
-                fontWeight: 500,
+                fontWeight: 600,
                 border: filter === f.key ? 'none' : '1px solid #e5e7eb',
-                backgroundColor: filter === f.key ? '#0f1623' : '#fff',
-                color: filter === f.key ? '#fff' : '#4b5563',
+                backgroundColor: filter === f.key ? '#111827' : '#fff',
+                color: filter === f.key ? '#fff' : '#6b7280',
                 cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
               }}
             >
               {f.label}
@@ -80,56 +251,29 @@ export default function MapView() {
           ))}
         </div>
 
-        <MapContainer center={BUEA_CENTER} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {filtered.map((bin) => (
-            <Marker key={bin._id} position={[bin.coordinates?.lat || 4.155, bin.coordinates?.lng || 9.265]} icon={createBinIcon(bin.status)}>
-              <Popup>
-                <div style={{ minWidth: 200 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 14 }}>{bin.binId}</span>
-                    <span style={{
-                      fontSize: 11, padding: '2px 8px', borderRadius: 12, fontWeight: 500,
-                      backgroundColor: bin.status === 'critical' ? '#fee2e2' : bin.status === 'warning' ? '#fef3c7' : '#dcfce7',
-                      color: bin.status === 'critical' ? '#b91c1c' : bin.status === 'warning' ? '#a16207' : '#15803d',
-                    }}>{bin.status?.toUpperCase()}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: '#4b5563', marginBottom: 4 }}>{bin.location}, {bin.zone}</p>
-                  <div style={{ fontSize: 12, color: '#6b7280', marginTop: 8 }}>
-                    <p>Fill: {bin.fillLevel}%</p>
-                    <p>LAT: {bin.coordinates?.lat?.toFixed(4)}</p>
-                    <p>LNG: {bin.coordinates?.lng?.toFixed(4)}</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                    <button style={{ flex: 1, backgroundColor: '#0f1623', color: '#fff', fontSize: 12, padding: '6px 0', borderRadius: 6, fontWeight: 500, border: 'none', cursor: 'pointer' }}>Mark Collected</button>
-                    <button style={{ flex: 1, border: '1px solid #e5e7eb', fontSize: 12, padding: '6px 0', borderRadius: 6, fontWeight: 500, color: '#4b5563', backgroundColor: '#fff', cursor: 'pointer' }}>Logistics</button>
-                  </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+        <iframe
+          srcDoc={mapHTML}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+          title="Map"
+        />
       </div>
 
       {/* Zone Overview Panel */}
-      <div style={{ width: 300, backgroundColor: '#fff', borderLeft: '1px solid #e5e7eb', padding: 20, overflowY: 'auto' }}>
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Zone Overview</h2>
-        <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>Real-time municipality health</p>
+      <div style={{ width: 300, backgroundColor: '#fff', borderLeft: '1px solid #e8ecf1', padding: 24, overflowY: 'auto' }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Zone Overview</h2>
+        <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 24 }}>Real-time municipality health</p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {zoneOverview.map((zone) => (
-            <div key={zone.name} style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div key={zone.name} style={{ border: '1px solid #e8ecf1', borderRadius: 16, padding: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{zone.name}</h3>
                 <Badge variant={statusVariant(zone.status)}>{zone.alertCount} Alerts</Badge>
               </div>
-              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Total Bins: {zone.totalBins}</p>
+              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>Total Bins: {zone.totalBins}</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 999, height: 8, overflow: 'hidden' }}>
-                  <div style={{ height: 8, borderRadius: 999, backgroundColor: '#22c55e', width: `${zone.efficiency}%` }} />
+                <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 999, height: 6, overflow: 'hidden' }}>
+                  <div style={{ height: 6, borderRadius: 999, backgroundColor: '#22c55e', width: `${zone.efficiency}%` }} />
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{zone.efficiency}%</span>
               </div>
@@ -137,7 +281,10 @@ export default function MapView() {
           ))}
         </div>
 
-        <button style={{ width: '100%', marginTop: 16, color: '#22c55e', fontSize: 14, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }}>
+        <button
+          onClick={() => navigate('/bins')}
+          style={{ width: '100%', marginTop: 20, color: '#22c55e', fontSize: 14, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer' }}
+        >
           View All Zones →
         </button>
       </div>

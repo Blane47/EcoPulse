@@ -3,11 +3,12 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert,
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, getColors } from '../theme';
 import api from '../api/axios';
 
 export default function ReportBinScreen({ navigation }) {
-  const { zone, language, profile } = useZone();
+  const { zone, language, profile, darkMode } = useZone();
+  const c = getColors(darkMode);
   const en = language === 'en';
   const [description, setDescription] = useState('');
   const [note, setNote] = useState('');
@@ -87,70 +88,70 @@ export default function ReportBinScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-      <Text style={styles.title}>{en ? 'Report Waste Pile' : 'Signaler un Tas de Déchets'}</Text>
-      <Text style={styles.subtitle}>
+    <ScrollView style={[styles.container, { backgroundColor: c.background }]} contentContainerStyle={{ paddingBottom: 120 }}>
+      <Text style={[styles.title, { color: c.text }]}>{en ? 'Report Waste Pile' : 'Signaler un Tas de Déchets'}</Text>
+      <Text style={[styles.subtitle, { color: c.textSecondary }]}>
         {en ? 'Snap a photo and we\'ll grab your location automatically' : 'Prenez une photo et nous récupérons votre position automatiquement'}
       </Text>
 
       {/* Location Status */}
-      <View style={styles.locationCard}>
+      <View style={[styles.locationCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
         <View style={styles.locationLeft}>
           <Text style={{ fontSize: 20 }}>📍</Text>
           <View style={{ flex: 1 }}>
-            <Text style={styles.locationTitle}>{en ? 'Your Location' : 'Votre Position'}</Text>
+            <Text style={[styles.locationTitle, { color: c.text }]}>{en ? 'Your Location' : 'Votre Position'}</Text>
             {locating ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.locationStatus}>{en ? 'Getting GPS...' : 'Localisation GPS...'}</Text>
+                <ActivityIndicator size="small" color={c.accent} />
+                <Text style={[styles.locationStatus, { color: c.textMuted }]}>{en ? 'Getting GPS...' : 'Localisation GPS...'}</Text>
               </View>
             ) : coords ? (
-              <Text style={styles.locationCoords}>{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</Text>
+              <Text style={[styles.locationCoords, { color: c.accent }]}>{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</Text>
             ) : (
-              <Text style={[styles.locationStatus, { color: colors.critical }]}>{en ? 'Unavailable' : 'Indisponible'}</Text>
+              <Text style={[styles.locationStatus, { color: c.critical }]}>{en ? 'Unavailable' : 'Indisponible'}</Text>
             )}
           </View>
         </View>
-        {coords && <Text style={styles.locationCheck}>✓</Text>}
+        {coords && <Text style={[styles.locationCheck, { color: c.accent }]}>✓</Text>}
       </View>
 
       {/* Photo Section */}
-      <Text style={styles.label}>{en ? 'PHOTO EVIDENCE' : 'PREUVE PHOTO'}</Text>
+      <Text style={[styles.label, { color: c.textMuted }]}>{en ? 'PHOTO EVIDENCE' : 'PREUVE PHOTO'}</Text>
       {photo ? (
         <View style={styles.photoPreviewContainer}>
           <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
           <View style={styles.photoActions}>
-            <TouchableOpacity style={styles.retakeBtn} onPress={takePhoto}>
-              <Text style={styles.retakeBtnText}>📷 {en ? 'Retake' : 'Reprendre'}</Text>
+            <TouchableOpacity style={[styles.retakeBtn, { borderColor: c.accent }]} onPress={takePhoto}>
+              <Text style={[styles.retakeBtnText, { color: c.accent }]}>📷 {en ? 'Retake' : 'Reprendre'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.retakeBtn, { borderColor: colors.critical }]} onPress={() => setPhoto(null)}>
-              <Text style={[styles.retakeBtnText, { color: colors.critical }]}>✕ {en ? 'Remove' : 'Supprimer'}</Text>
+            <TouchableOpacity style={[styles.retakeBtn, { borderColor: c.critical }]} onPress={() => setPhoto(null)}>
+              <Text style={[styles.retakeBtnText, { color: c.critical }]}>✕ {en ? 'Remove' : 'Supprimer'}</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
-        <TouchableOpacity style={styles.cameraBtn} onPress={takePhoto} activeOpacity={0.7}>
+        <TouchableOpacity style={[styles.cameraBtn, { backgroundColor: c.card, borderColor: c.accent }]} onPress={takePhoto} activeOpacity={0.7}>
           <Text style={{ fontSize: 32 }}>📸</Text>
-          <Text style={styles.cameraBtnText}>{en ? 'Take Live Photo' : 'Prendre Photo en Direct'}</Text>
-          <Text style={styles.cameraBtnSub}>{en ? 'Camera only — no gallery uploads' : 'Caméra uniquement — pas de téléchargement'}</Text>
+          <Text style={[styles.cameraBtnText, { color: c.text }]}>{en ? 'Take Live Photo' : 'Prendre Photo en Direct'}</Text>
+          <Text style={[styles.cameraBtnSub, { color: c.textMuted }]}>{en ? 'Camera only — no gallery uploads' : 'Caméra uniquement — pas de téléchargement'}</Text>
         </TouchableOpacity>
       )}
 
       {/* Description */}
-      <Text style={styles.label}>{en ? 'LOCATION DESCRIPTION (OPTIONAL)' : 'DESCRIPTION DU LIEU (OPTIONNEL)'}</Text>
+      <Text style={[styles.label, { color: c.textMuted }]}>{en ? 'LOCATION DESCRIPTION (OPTIONAL)' : 'DESCRIPTION DU LIEU (OPTIONNEL)'}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: c.cardBorder, backgroundColor: c.card, color: c.text }]}
         placeholder={en ? 'e.g. Behind UB Junction, near the market' : 'ex. Derrière le Carrefour UB, près du marché'}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={c.textMuted}
         value={description}
         onChangeText={setDescription}
       />
 
-      <Text style={styles.label}>{en ? 'ADDITIONAL NOTES (OPTIONAL)' : 'NOTES SUPPLÉMENTAIRES (OPTIONNEL)'}</Text>
+      <Text style={[styles.label, { color: c.textMuted }]}>{en ? 'ADDITIONAL NOTES (OPTIONAL)' : 'NOTES SUPPLÉMENTAIRES (OPTIONNEL)'}  </Text>
       <TextInput
-        style={[styles.input, styles.textarea]}
+        style={[styles.input, styles.textarea, { borderColor: c.cardBorder, backgroundColor: c.card, color: c.text }]}
         placeholder={en ? 'e.g. Been here for 3 days, very smelly' : 'ex. Là depuis 3 jours, très malodorant'}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={c.textMuted}
         value={note}
         onChangeText={setNote}
         multiline
@@ -173,7 +174,7 @@ export default function ReportBinScreen({ navigation }) {
         )}
       </TouchableOpacity>
 
-      <Text style={styles.footerNote}>
+      <Text style={[styles.footerNote, { color: c.textMuted }]}>
         {en
           ? 'Your GPS location will be sent with the photo so the admin can locate the exact spot.'
           : 'Votre position GPS sera envoyée avec la photo pour que l\'admin puisse localiser l\'endroit exact.'}

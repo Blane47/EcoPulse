@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, RefreshControl, ScrollView, Image } from 'react-native';
+import GradientBrand from '../components/GradientBrand';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, getColors } from '../theme';
 import api from '../api/axios';
 
 export default function HomeScreen({ navigation }) {
-  const { zone, clearZone, language, profile } = useZone();
+  const { zone, clearZone, language, profile, darkMode } = useZone();
+  const c = getColors(darkMode);
   const en = language === 'en';
   const [stats, setStats] = useState({ total: 0, critical: 0, healthy: 0 });
   const [refreshing, setRefreshing] = useState(false);
@@ -38,17 +40,24 @@ export default function HomeScreen({ navigation }) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Check for unread admin messages
+  // Check for report status updates (reviewed or collected)
   useEffect(() => {
     if (!profile?.phone) return;
-    const checkUnread = async () => {
+    const checkUpdates = async () => {
       try {
-        const { data } = await api.get(`/community/chat/${profile.phone}/unread`);
-        setHasUnread(data.unread > 0);
+        const { data } = await api.get(`/reports/user/${profile.phone}`);
+        // Check if any reports were updated since last seen
+        const lastSeen = await require('@react-native-async-storage/async-storage').default.getItem('lastReportCheck');
+        const lastTime = lastSeen ? new Date(lastSeen).getTime() : 0;
+        const hasUpdates = data.some(r =>
+          (r.status === 'reviewed' || r.status === 'collected') &&
+          new Date(r.updatedAt).getTime() > lastTime
+        );
+        setHasUnread(hasUpdates);
       } catch {}
     };
-    checkUnread();
-    const interval = setInterval(checkUnread, 10000);
+    checkUpdates();
+    const interval = setInterval(checkUpdates, 15000);
     return () => clearInterval(interval);
   }, [profile?.phone]);
 
@@ -63,34 +72,38 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <ScrollView
-      style={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
-      contentContainerStyle={{ paddingBottom: 100 }}
+      style={[styles.container, { backgroundColor: c.background }]}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={c.accent} />}
+      contentContainerStyle={{ paddingBottom: 120 }}
     >
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image source={require('../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.brandText}>EcoPulse</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('Chat')} style={{ position: 'relative' }}>
+        <GradientBrand fontSize={20} />
+        <TouchableOpacity
+          onPress={async () => {
+            await require('@react-native-async-storage/async-storage').default.setItem('lastReportCheck', new Date().toISOString());
+            setHasUnread(false);
+            navigation.navigate('Reports');
+          }}
+          style={{ position: 'relative' }}
+        >
           <Text style={{ fontSize: 20 }}>🔔</Text>
-          {hasUnread && <View style={styles.notifDot} />}
+          {hasUnread && <View style={[styles.notifDot, { borderColor: c.background }]} />}
         </TouchableOpacity>
       </View>
 
       {/* Greeting */}
       {profile?.name && (
-        <Text style={styles.greeting}>
+        <Text style={[styles.greeting, { color: c.text }]}>
           {en ? `Hey ${profile.name} 👋` : `Salut ${profile.name} 👋`}
         </Text>
       )}
 
       {/* Zone Selector */}
-      <TouchableOpacity style={styles.zonePill} onPress={clearZone}>
+      <TouchableOpacity style={[styles.zonePill, { backgroundColor: c.card, borderColor: c.cardBorder }]} onPress={clearZone}>
         <Text style={styles.zoneDot}>📍</Text>
-        <Text style={styles.zoneText}>{zone}</Text>
-        <Text style={styles.zoneChevron}>▾</Text>
+        <Text style={[styles.zoneText, { color: c.text }]}>{zone}</Text>
+        <Text style={[styles.zoneChevron, { color: c.textMuted }]}>▾</Text>
       </TouchableOpacity>
 
       {/* Next Collection Banner */}
@@ -119,51 +132,51 @@ export default function HomeScreen({ navigation }) {
       {/* Action Buttons Grid */}
       <View style={styles.actionGrid}>
         {actionButtons.map((btn) => (
-          <TouchableOpacity key={btn.label} style={styles.actionCard} onPress={btn.onPress} activeOpacity={0.7}>
-            <View style={styles.actionIconCircle}>
+          <TouchableOpacity key={btn.label} style={[styles.actionCard, { backgroundColor: c.card, borderColor: c.cardBorder }]} onPress={btn.onPress} activeOpacity={0.7}>
+            <View style={[styles.actionIconCircle, { backgroundColor: c.accentLight }]}>
               <Text style={styles.actionIcon}>{btn.icon}</Text>
             </View>
-            <Text style={styles.actionLabel}>{btn.label}</Text>
-            <Text style={styles.actionSub}>{btn.sub}</Text>
+            <Text style={[styles.actionLabel, { color: c.text }]}>{btn.label}</Text>
+            <Text style={[styles.actionSub, { color: c.textMuted }]}>{btn.sub}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
       {/* Zone Status */}
       <View style={styles.zoneStatusSection}>
-        <Text style={styles.zoneStatusTitle}>{(zone || 'ZONE').toUpperCase()} ZONE STATUS</Text>
-        <View style={styles.zoneStatsRow}>
+        <Text style={[styles.zoneStatusTitle, { color: c.textMuted }]}>{(zone || 'ZONE').toUpperCase()} ZONE STATUS</Text>
+        <View style={[styles.zoneStatsRow, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
           <View style={styles.zoneStat}>
-            <Text style={styles.zoneStatValue}>{stats.total}</Text>
-            <Text style={styles.zoneStatLabel}>{en ? 'Total Bins' : 'Total Bacs'}</Text>
+            <Text style={[styles.zoneStatValue, { color: c.text }]}>{stats.total}</Text>
+            <Text style={[styles.zoneStatLabel, { color: c.textSecondary }]}>{en ? 'Total Bins' : 'Total Bacs'}</Text>
           </View>
-          <View style={styles.zoneStatDivider} />
+          <View style={[styles.zoneStatDivider, { backgroundColor: c.cardBorder }]} />
           <View style={styles.zoneStat}>
-            <Text style={[styles.zoneStatValue, { color: colors.critical }]}>{stats.critical}</Text>
-            <Text style={styles.zoneStatLabel}>{en ? 'Critical' : 'Critique'} 🔴</Text>
+            <Text style={[styles.zoneStatValue, { color: c.critical }]}>{stats.critical}</Text>
+            <Text style={[styles.zoneStatLabel, { color: c.textSecondary }]}>{en ? 'Critical' : 'Critique'} 🔴</Text>
           </View>
-          <View style={styles.zoneStatDivider} />
+          <View style={[styles.zoneStatDivider, { backgroundColor: c.cardBorder }]} />
           <View style={styles.zoneStat}>
-            <Text style={[styles.zoneStatValue, { color: colors.accent }]}>{stats.healthy}%</Text>
-            <Text style={styles.zoneStatLabel}>{en ? 'Healthy' : 'Sain'} 🟢</Text>
+            <Text style={[styles.zoneStatValue, { color: c.accent }]}>{stats.healthy}%</Text>
+            <Text style={[styles.zoneStatLabel, { color: c.textSecondary }]}>{en ? 'Healthy' : 'Sain'} 🟢</Text>
           </View>
         </View>
       </View>
 
       {/* Recent Activity */}
-      <View style={styles.recentCard}>
+      <View style={[styles.recentCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
         <View style={styles.recentLeft}>
-          <View style={styles.recentIcon}>
+          <View style={[styles.recentIcon, { backgroundColor: c.background }]}>
             <Text style={{ fontSize: 20 }}>🗑️</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.recentTitle}>
+            <Text style={[styles.recentTitle, { color: c.text }]}>
               {en ? 'Recent report near Market Square' : 'Signalement récent près du Marché'}
             </Text>
-            <Text style={styles.recentStatus}>● {en ? 'Reviewed' : 'Examiné'}</Text>
+            <Text style={[styles.recentStatus, { color: c.accent }]}>● {en ? 'Reviewed' : 'Examiné'}</Text>
           </View>
         </View>
-        <Text style={styles.recentTime}>2h ago</Text>
+        <Text style={[styles.recentTime, { color: c.textMuted }]}>2h ago</Text>
       </View>
     </ScrollView>
   );
@@ -180,13 +193,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 12,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-  },
-  brandText: { fontSize: 18, fontWeight: '800', color: colors.accent },
+  brandText: { fontSize: 22, fontWeight: '900', color: '#1a3c3c', letterSpacing: 5 },
   greeting: { fontSize: 20, fontWeight: '700', color: colors.text, paddingHorizontal: 20, marginBottom: 4 },
 
   // Zone Selector

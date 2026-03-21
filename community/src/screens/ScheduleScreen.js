@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, getColors } from '../theme';
 import api from '../api/axios';
 
 // Try to import expo-notifications (fails gracefully in Expo Go)
@@ -127,7 +127,8 @@ async function cancelReminder(notifId) {
 }
 
 export default function ScheduleScreen({ navigation }) {
-  const { zone, language } = useZone();
+  const { zone, language, darkMode } = useZone();
+  const c = getColors(darkMode);
   const en = language === 'en';
   const [schedule, setSchedule] = useState([]);
   const [reminders, setReminders] = useState({});
@@ -215,18 +216,18 @@ export default function ScheduleScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+    <ScrollView style={[styles.container, { backgroundColor: c.background }]} contentContainerStyle={{ paddingBottom: 120 }}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View>
-            <Text style={styles.headerTitle}>{en ? 'Schedule' : 'Calendrier'}</Text>
-            <Text style={styles.headerSub}>ECOPULSE</Text>
+            <Text style={[styles.headerTitle, { color: c.text }]}>{en ? 'Schedule' : 'Calendrier'}</Text>
+            <Text style={[styles.headerSub, { color: c.textMuted }]}>ECOPULSE</Text>
           </View>
         </View>
-        <View style={styles.zoneBadge}>
+        <View style={[styles.zoneBadge, { backgroundColor: c.accentLight }]}>
           <Text style={styles.zoneBadgeDot}>📍</Text>
-          <Text style={styles.zoneBadgeText}>{zone}</Text>
+          <Text style={[styles.zoneBadgeText, { color: c.accent }]}>{zone}</Text>
         </View>
       </View>
 
@@ -236,15 +237,15 @@ export default function ScheduleScreen({ navigation }) {
       </View>
 
       {/* Calendar */}
-      <View style={styles.calendarCard}>
+      <View style={[styles.calendarCard, { backgroundColor: c.card, borderColor: c.cardBorder }]}>
         <View style={styles.calendarHeader}>
-          <Text style={styles.calendarMonth}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+          <Text style={[styles.calendarMonth, { color: c.text }]}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
           <View style={styles.calendarNav}>
             <TouchableOpacity onPress={prevMonth}>
-              <Text style={styles.navArrow}>‹</Text>
+              <Text style={[styles.navArrow, { color: c.textSecondary }]}>‹</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={nextMonth}>
-              <Text style={styles.navArrow}>›</Text>
+              <Text style={[styles.navArrow, { color: c.textSecondary }]}>›</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -252,7 +253,7 @@ export default function ScheduleScreen({ navigation }) {
         {/* Day Headers */}
         <View style={styles.dayHeaderRow}>
           {DAYS.map((d) => (
-            <Text key={d} style={styles.dayHeader}>{d}</Text>
+            <Text key={d} style={[styles.dayHeader, { color: c.textMuted }]}>{d}</Text>
           ))}
         </View>
 
@@ -266,17 +267,18 @@ export default function ScheduleScreen({ navigation }) {
                 <View key={ci} style={styles.dayCell}>
                   <View style={[
                     styles.dayCellInner,
-                    isToday && styles.todayCircle,
+                    isToday && { borderWidth: 2, borderColor: c.accent },
                   ]}>
                     <Text style={[
                       styles.dayText,
-                      !cell.current && styles.dayTextMuted,
-                      isToday && styles.todayText,
+                      { color: c.text },
+                      !cell.current && { color: c.textMuted },
+                      isToday && { fontWeight: '700', color: c.accent },
                     ]}>
                       {cell.day}
                     </Text>
                   </View>
-                  {hasCollection && <View style={styles.collectionDot} />}
+                  {hasCollection && <View style={[styles.collectionDot, { backgroundColor: c.accent }]} />}
                 </View>
               );
             })}
@@ -286,7 +288,7 @@ export default function ScheduleScreen({ navigation }) {
 
       {/* Upcoming Collections */}
       <View style={styles.upcomingSection}>
-        <Text style={styles.upcomingTitle}>
+        <Text style={[styles.upcomingTitle, { color: c.textMuted }]}>
           {en ? 'UPCOMING COLLECTIONS' : 'PROCHAINES COLLECTES'}
         </Text>
 
@@ -296,25 +298,29 @@ export default function ScheduleScreen({ navigation }) {
           return (
             <View
               key={key}
-              style={[styles.collectionCard, isActive && styles.collectionCardActive]}
+              style={[
+                styles.collectionCard,
+                { backgroundColor: c.card, borderColor: c.cardBorder },
+                isActive && { backgroundColor: c.accent, borderColor: c.accent },
+              ]}
             >
-              <View style={[styles.dateBox, isActive && styles.dateBoxActive]}>
-                <Text style={[styles.dateBoxDay, isActive && styles.dateBoxDayActive]}>
+              <View style={[styles.dateBox, { backgroundColor: c.background }, isActive && styles.dateBoxActive]}>
+                <Text style={[styles.dateBoxDay, { color: c.textMuted }, isActive && styles.dateBoxDayActive]}>
                   {item.day?.slice(0, 3).toUpperCase()}
                 </Text>
-                <Text style={[styles.dateBoxNum, isActive && styles.dateBoxNumActive]}>
+                <Text style={[styles.dateBoxNum, { color: c.text }, isActive && styles.dateBoxNumActive]}>
                   {item.dateNum || (20 + index * 3)}
                 </Text>
               </View>
               <View style={styles.collectionInfo}>
-                <Text style={[styles.collectionType, isActive && { color: '#fff' }]}>
+                <Text style={[styles.collectionType, { color: c.text }, isActive && { color: '#fff' }]}>
                   {(item.wasteTypes || []).join(' + ')}
                 </Text>
-                <Text style={[styles.collectionTime, isActive && { color: 'rgba(255,255,255,0.7)' }]}>
+                <Text style={[styles.collectionTime, { color: c.textSecondary }, isActive && { color: 'rgba(255,255,255,0.7)' }]}>
                   {item.time}
                 </Text>
                 {!!reminders[key] && (
-                  <Text style={[styles.reminderLabel, isActive && { color: 'rgba(255,255,255,0.8)' }]}>
+                  <Text style={[styles.reminderLabel, { color: c.accent }, isActive && { color: 'rgba(255,255,255,0.8)' }]}>
                     🔔 {en ? 'Reminder set' : 'Rappel activé'}
                   </Text>
                 )}
@@ -322,8 +328,8 @@ export default function ScheduleScreen({ navigation }) {
               <Switch
                 value={!!reminders[key]}
                 onValueChange={() => toggleReminder(item)}
-                trackColor={{ false: colors.cardBorder, true: isActive ? 'rgba(255,255,255,0.3)' : colors.accentLight }}
-                thumbColor={reminders[key] ? (isActive ? '#fff' : colors.accent) : '#f4f3f4'}
+                trackColor={{ false: c.cardBorder, true: isActive ? 'rgba(255,255,255,0.3)' : c.accentLight }}
+                thumbColor={reminders[key] ? (isActive ? '#fff' : c.accent) : '#f4f3f4'}
               />
             </View>
           );
@@ -331,9 +337,9 @@ export default function ScheduleScreen({ navigation }) {
       </View>
 
       {/* Reminder Note */}
-      <View style={styles.reminderCard}>
+      <View style={[styles.reminderCard, { backgroundColor: c.accentLight }]}>
         <Text style={styles.reminderIcon}>♻️</Text>
-        <Text style={styles.reminderText}>
+        <Text style={[styles.reminderText, { color: c.text }]}>
           {en
             ? 'Toggle reminders to get notified the evening before collection day.'
             : 'Activez les rappels pour être notifié la veille du jour de collecte.'}

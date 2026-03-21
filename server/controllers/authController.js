@@ -50,6 +50,49 @@ exports.getMe = async (req, res) => {
   res.json(req.user);
 };
 
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const { name, email, phone, avatar } = req.body;
+    const updates = {};
+    if (name) updates.name = name.trim();
+    if (email) updates.email = email.trim().toLowerCase();
+    if (phone !== undefined) updates.phone = phone.trim();
+    if (avatar !== undefined) updates.avatar = avatar;
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true, runValidators: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
+    next(error);
+  }
+};
+
+exports.changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Please provide current and new password' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.collectorLogin = async (req, res, next) => {
   try {
     const { phone, pin } = req.body;

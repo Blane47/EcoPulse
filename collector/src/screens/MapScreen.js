@@ -2,10 +2,12 @@ import { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Animated, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, gradients, shadows } from '../theme';
+import { colors, getColors, gradients, shadows } from '../theme';
+import { useAuth } from '../context/AuthContext';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
 import api from '../api/axios';
 
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const statusColors = { critical: colors.critical, warning: colors.warning, optimal: colors.accent };
 
@@ -14,47 +16,120 @@ const buildMapHTML = (bins, searchQuery) => {
     .filter((b) => b.coordinates?.lat)
     .filter((b) => !searchQuery || b.location.toLowerCase().includes(searchQuery.toLowerCase()) || b.binId.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const markers = filtered.map((bin) => {
-    const color = bin.status === 'critical' ? '#ef4444' : bin.status === 'warning' ? '#f59e0b' : '#22c55e';
-    return `
-      L.circleMarker([${bin.coordinates.lat}, ${bin.coordinates.lng}], {
-        radius: 12,
-        fillColor: '${color}',
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.9
-      }).addTo(map)
-        .on('click', function() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerPress', binId: '${bin._id}' }));
-        })
-        .bindTooltip('${bin.binId}', { permanent: false, direction: 'top', offset: [0, -10] });
-    `;
-  }).join('\n');
+  const geojson = {
+    type: 'FeatureCollection',
+    features: filtered.map((bin) => ({
+      type: 'Feature',
+      properties: {
+        id: bin._id,
+        binId: bin.binId,
+        color: bin.status === 'critical' ? '#ef4444' : bin.status === 'warning' ? '#f59e0b' : '#22c55e',
+        fillLevel: bin.fillLevel,
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [bin.coordinates.lng, bin.coordinates.lat],
+      },
+    })),
+  };
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+      <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
       <style>
         * { margin: 0; padding: 0; }
+        body { overflow: hidden; }
         #map { width: 100vw; height: 100vh; }
+        .mapboxgl-ctrl-attrib { display: none !important; }
       </style>
     </head>
     <body>
       <div id="map"></div>
       <script>
-        var map = L.map('map', { zoomControl: false }).setView([4.1597, 9.2920], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap',
-          maxZoom: 19
-        }).addTo(map);
-        ${markers}
-        map.on('click', function() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapPress' }));
+        mapboxgl.accessToken = '${MAPBOX_TOKEN}';
+        const map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [9.2920, 4.1597],
+          zoom: 13.5,
+          attributionControl: false,
+        });
+
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+        map.on('load', () => {
+          map.addSource('bins', {
+            type: 'geojson',
+            data: ${JSON.stringify(geojson)},
+          });
+
+          // Outer glow
+          map.addLayer({
+            id: 'bins-glow',
+            type: 'circle',
+            source: 'bins',
+            paint: {
+              'circle-radius': 18,
+              'circle-color': ['get', 'color'],
+              'circle-opacity': 0.15,
+            },
+          });
+
+          // Main circle
+          map.addLayer({
+            id: 'bins-circle',
+            type: 'circle',
+            source: 'bins',
+            paint: {
+              'circle-radius': 10,
+              'circle-color': ['get', 'color'],
+              'circle-stroke-width': 2.5,
+              'circle-stroke-color': '#ffffff',
+              'circle-opacity': 0.9,
+            },
+          });
+
+          // Fill level label
+          map.addLayer({
+            id: 'bins-label',
+            type: 'symbol',
+            source: 'bins',
+            layout: {
+              'text-field': ['concat', ['get', 'fillLevel'], '%'],
+              'text-size': 9,
+              'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+              'text-offset': [0, -2],
+            },
+            paint: {
+              'text-color': '#1f2937',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1,
+            },
+          });
+
+          // Click handler
+          map.on('click', 'bins-circle', (e) => {
+            const feature = e.features[0];
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'markerPress',
+              binId: feature.properties.id,
+            }));
+          });
+
+          map.on('click', (e) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['bins-circle'] });
+            if (!features.length) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapPress' }));
+            }
+          });
+
+          // Cursor
+          map.on('mouseenter', 'bins-circle', () => map.getCanvas().style.cursor = 'pointer');
+          map.on('mouseleave', 'bins-circle', () => map.getCanvas().style.cursor = '');
         });
       </script>
     </body>
@@ -63,6 +138,8 @@ const buildMapHTML = (bins, searchQuery) => {
 };
 
 export default function MapScreen() {
+  const { darkMode } = useAuth();
+  const c = getColors(darkMode);
   const [bins, setBins] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedBin, setSelectedBin] = useState(null);
@@ -144,7 +221,7 @@ export default function MapScreen() {
 
   if (loading) {
     return (
-      <LinearGradient colors={gradients.screenBg} style={styles.loading}>
+      <LinearGradient colors={darkMode ? gradients.screenBgDark : gradients.screenBg} style={styles.loading}>
         <ActivityIndicator size="large" color={colors.accent} />
       </LinearGradient>
     );
@@ -154,22 +231,19 @@ export default function MapScreen() {
     <View style={styles.container}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <View style={styles.searchBar}>
+        <View style={[styles.searchBar, { backgroundColor: darkMode ? 'rgba(34,37,54,0.95)' : 'rgba(255,255,255,0.95)' }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: c.text }]}
             placeholder="Search bin or location..."
-            placeholderTextColor={colors.textMuted}
+            placeholderTextColor={c.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          <TouchableOpacity>
-            <Text style={styles.micIcon}>🎤</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
-      {/* OpenStreetMap via WebView */}
+      {/* Mapbox Map */}
       <WebView
         ref={webViewRef}
         style={styles.map}
@@ -182,8 +256,8 @@ export default function MapScreen() {
 
       {/* Bottom Sheet */}
       {selectedBin && (
-        <Animated.View style={[styles.bottomSheet, { transform: [{ translateY: sheetTranslateY }] }]}>
-          <View style={styles.sheetHandle} />
+        <Animated.View style={[styles.bottomSheet, { backgroundColor: c.card, transform: [{ translateY: sheetTranslateY }] }]}>
+          <View style={[styles.sheetHandle, { backgroundColor: c.cardBorder }]} />
 
           <View style={styles.sheetContent}>
             {/* Bin Info Row */}
@@ -194,8 +268,8 @@ export default function MapScreen() {
                 resizeMode="cover"
               />
               <View style={styles.sheetBinInfo}>
-                <Text style={styles.sheetBinId}>{selectedBin.binId}</Text>
-                <Text style={styles.sheetBinLocation}>{selectedBin.location}</Text>
+                <Text style={[styles.sheetBinId, { color: c.text }]}>{selectedBin.binId}</Text>
+                <Text style={[styles.sheetBinLocation, { color: c.textSecondary }]}>{selectedBin.location}</Text>
               </View>
               <View style={styles.sheetBinStatus}>
                 <View style={[styles.statusPill, { backgroundColor: (statusColors[selectedBin.status] || colors.accent) + '20' }]}>
@@ -203,18 +277,18 @@ export default function MapScreen() {
                     {selectedBin.fillLevel}% {statusLabel(selectedBin.status)}
                   </Text>
                 </View>
-                <Text style={styles.sheetDistance}>0.7km away</Text>
+                <Text style={[styles.sheetDistance, { color: c.textMuted }]}>0.7km away</Text>
               </View>
             </View>
 
             {/* Capacity Level */}
             <View style={styles.capacitySection}>
-              <Text style={styles.capacityLabel}>CAPACITY LEVEL</Text>
+              <Text style={[styles.capacityLabel, { color: c.textMuted }]}>CAPACITY LEVEL</Text>
               <Text style={[styles.criticalZone, { color: statusColors[selectedBin.status] || colors.accent }]}>
                 {selectedBin.status === 'critical' ? 'Critical Zone' : selectedBin.status === 'warning' ? 'Warning Zone' : 'Safe Zone'}
               </Text>
             </View>
-            <View style={styles.capacityBar}>
+            <View style={[styles.capacityBar, { backgroundColor: c.cardBorder }]}>
               <LinearGradient
                 colors={['#22c55e', '#f59e0b', '#ef4444']}
                 start={{ x: 0, y: 0 }}
@@ -231,7 +305,7 @@ export default function MapScreen() {
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.collectBtn} onPress={handleCollect} activeOpacity={0.8} disabled={collecting}>
-                <View style={styles.collectBtnInner}>
+                <View style={[styles.collectBtnInner, { backgroundColor: c.card }]}>
                   {collecting ? (
                     <ActivityIndicator color={colors.accent} size="small" />
                   ) : (
@@ -271,12 +345,11 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 16, marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: colors.text },
-  micIcon: { fontSize: 18, marginLeft: 8 },
 
   // Bottom Sheet
   bottomSheet: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 100,
     left: 0,
     right: 0,
     backgroundColor: '#fff',
