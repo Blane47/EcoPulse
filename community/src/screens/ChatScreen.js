@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, FlatList,
+  View, Text, TextInput, TouchableOpacity, FlatList, Image,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
 import api from '../api/axios';
+import { ArrowLeftIcon } from '../components/Icons';
+import { ChatIcon } from '../components/TabIcons';
 
 export default function ChatScreen() {
   const { profile, language } = useZone();
@@ -33,7 +35,7 @@ export default function ChatScreen() {
   useEffect(() => {
     fetchMessages();
     // Poll every 5 seconds
-    pollRef.current = setInterval(fetchMessages, 5000);
+    pollRef.current = setInterval(fetchMessages, 2000);
     return () => clearInterval(pollRef.current);
   }, [profile?.phone]);
 
@@ -79,13 +81,13 @@ export default function ChatScreen() {
       <>
         {showDate && (
           <View style={styles.dateBadge}>
-            <Text style={styles.dateBadgeText}>{formatDate(item.createdAt)}</Text>
+            <Text style={[styles.dateBadgeText, { color: colors.textMuted, backgroundColor: colors.card }]}>{formatDate(item.createdAt)}</Text>
           </View>
         )}
-        <View style={[styles.messageBubble, isMe ? styles.myBubble : styles.theirBubble]}>
-          {!isMe && <Text style={styles.senderName}>Admin</Text>}
-          <Text style={[styles.messageText, isMe && styles.myMessageText]}>{item.text}</Text>
-          <Text style={[styles.messageTime, isMe && styles.myMessageTime]}>{formatTime(item.createdAt)}</Text>
+        <View style={[styles.messageBubble, isMe ? [styles.myBubble, { backgroundColor: colors.accent }] : [styles.theirBubble, { backgroundColor: colors.card, borderColor: colors.cardBorder }]]}>
+          {!isMe && <Text style={[styles.senderName, { color: colors.accent }]}>Admin</Text>}
+          <Text style={[styles.messageText, { color: colors.text }, isMe && styles.myMessageText]}>{item.text}</Text>
+          <Text style={[styles.messageTime, { color: colors.textMuted }, isMe && styles.myMessageTime]}>{formatTime(item.createdAt)}</Text>
         </View>
       </>
     );
@@ -93,7 +95,7 @@ export default function ChatScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
@@ -101,27 +103,36 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={90}
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerAvatar}>
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
+        <View style={[styles.headerAvatar, { backgroundColor: colors.accentLight }]}>
           <Text style={{ fontSize: 18 }}>🛡️</Text>
         </View>
         <View>
-          <Text style={styles.headerTitle}>{en ? 'Admin Support' : 'Support Admin'}</Text>
-          <Text style={styles.headerSub}>{en ? 'Usually replies within an hour' : 'Répond généralement dans l\'heure'}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{en ? 'Admin Support' : 'Support Admin'}</Text>
+          <Text style={[styles.headerSub, { color: colors.textMuted }]}>{en ? 'Usually replies within an hour' : 'Répond généralement dans l\'heure'}</Text>
         </View>
+      </View>
+
+      {/* Logo Watermark */}
+      <View style={styles.watermarkContainer} pointerEvents="none">
+        <Image
+          source={require('../assets/images/logo.png')}
+          style={styles.watermarkLogo}
+          resizeMode="contain"
+        />
       </View>
 
       {/* Messages */}
       {messages.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>💬</Text>
-          <Text style={styles.emptyTitle}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
-          <Text style={styles.emptySub}>
+          <View style={{ marginBottom: 12 }}><ChatIcon size={40} color={colors.textMuted} /></View>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
+          <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
             {en
               ? 'Report issues, ask questions, or give feedback to the city admin.'
               : 'Signalez des problèmes, posez des questions ou donnez votre avis à l\'admin.'}
@@ -139,9 +150,9 @@ export default function ChatScreen() {
       )}
 
       {/* Input */}
-      <View style={styles.inputBar}>
+      <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { backgroundColor: colors.background, color: colors.text, borderColor: colors.cardBorder }]}
           placeholder={en ? 'Type a message...' : 'Tapez un message...'}
           placeholderTextColor={colors.textMuted}
           value={text}
@@ -167,6 +178,21 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
+  watermarkContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 0,
+  },
+  watermarkLogo: {
+    width: 450,
+    height: 450,
+    opacity: 0.3,
+  },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
 
   // Header
@@ -177,7 +203,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 14,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
     borderBottomColor: colors.cardBorder,
   },
@@ -248,8 +274,8 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    paddingBottom: 30,
-    backgroundColor: '#fff',
+    paddingBottom: 34,
+    backgroundColor: colors.card,
     borderTopWidth: 1,
     borderTopColor: colors.cardBorder,
   },

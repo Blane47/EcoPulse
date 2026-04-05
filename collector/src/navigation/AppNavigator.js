@@ -2,8 +2,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { useAuth } from '../context/AuthContext';
 import { colors, shadows } from '../theme';
+import { HomeIcon, RouteIcon, MapIcon, ProfileIcon } from '../components/TabIcons';
 
 import LoginScreen from '../screens/LoginScreen';
 import HomeScreen from '../screens/HomeScreen';
@@ -17,10 +19,10 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const tabConfig = {
-  Home: { icon: '🏠', label: 'HOME' },
-  Route: { icon: '🚛', label: 'ROUTE' },
-  Map: { icon: '🗺️', label: 'MAP' },
-  Profile: { icon: '👤', label: 'PROFILE' },
+  Home: { Icon: HomeIcon, label: 'HOME' },
+  Route: { Icon: RouteIcon, label: 'ROUTE' },
+  Map: { Icon: MapIcon, label: 'MAP' },
+  Profile: { Icon: ProfileIcon, label: 'PROFILE' },
 };
 
 function HomeTabs() {
@@ -28,36 +30,62 @@ function HomeTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => (
-          <View style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 50,
-            height: 34,
-            borderRadius: 17,
-            backgroundColor: focused ? 'rgba(34,197,94,0.15)' : 'transparent',
-          }}>
-            <Text style={{ fontSize: 19 }}>{tabConfig[route.name]?.icon}</Text>
-          </View>
-        ),
+        tabBarIcon: ({ focused }) => {
+          const { Icon } = tabConfig[route.name] || {};
+          return (
+            <View style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 44,
+              height: 32,
+            }}>
+              {Icon && <Icon size={22} color={focused ? '#fff' : 'rgba(255,255,255,0.5)'} />}
+            </View>
+          );
+        },
         tabBarLabel: ({ focused }) => (
           <Text style={{
-            fontSize: 9,
+            fontSize: 10,
             fontWeight: focused ? '700' : '500',
-            color: focused ? colors.accent : colors.textMuted,
+            color: focused ? '#fff' : 'rgba(255,255,255,0.5)',
             letterSpacing: 0.5,
             marginTop: -2,
           }}>
             {tabConfig[route.name]?.label}
           </Text>
         ),
+        tabBarBackground: () => (
+          <BlurView
+            intensity={80}
+            tint="dark"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderRadius: 32,
+              overflow: 'hidden',
+              backgroundColor: 'rgba(26, 26, 46, 0.75)',
+            }}
+          />
+        ),
         tabBarStyle: {
-          height: 72,
-          paddingBottom: 10,
+          position: 'absolute',
+          bottom: 0,
+          left: 20,
+          right: 20,
+          height: 64,
+          paddingBottom: 8,
           paddingTop: 8,
           borderTopWidth: 0,
-          backgroundColor: '#ffffff',
-          ...shadows.bottom,
+          backgroundColor: 'transparent',
+          borderRadius: 32,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.3,
+          shadowRadius: 16,
         },
       })}
     >

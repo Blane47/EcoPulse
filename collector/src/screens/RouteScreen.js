@@ -2,8 +2,11 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Linking, Platform, Image, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, shadows } from '../theme';
+import { useAuth } from '../context/AuthContext';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
+import { MapPinIcon } from '../components/Icons';
 import api from '../api/axios';
+import TealHeader from '../components/TealHeader';
 
 const FILTERS = ['All', 'Critical', 'Warning', 'Collected'];
 
@@ -89,17 +92,10 @@ export default function RouteScreen({ navigation }) {
   return (
     <LinearGradient colors={gradients.screenBg} style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <View style={styles.logoRow}>
-            <Image source={require('../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
-            <Text style={styles.headerBrand}>EcoPulse Go</Text>
-          </View>
-          <Text style={styles.headerMenu}>☰</Text>
-        </View>
-        <Text style={styles.title}>My Route Today</Text>
-        <Text style={styles.subtitle}>{bins.length} bins · Sorted by priority</Text>
-      </View>
+      <TealHeader
+        title="My Route Today"
+        subtitle={`${bins.length} bins · Sorted by priority`}
+      />
 
       {/* Filter Pills */}
       <View style={styles.filterRow}>
@@ -130,7 +126,7 @@ export default function RouteScreen({ navigation }) {
       <FlatList
         data={filteredBins}
         keyExtractor={(item) => item._id}
-        contentContainerStyle={{ paddingBottom: 20, paddingHorizontal: 20 }}
+        contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 20 }}
         renderItem={({ item }) => {
           const done = collected.has(item.binId);
           const statusLbl = getStatusLabel(item.status, done);
@@ -163,8 +159,10 @@ export default function RouteScreen({ navigation }) {
               <View style={styles.binRow}>
                 <View style={styles.binInfo}>
                   <Text style={styles.binId}>{item.binId}</Text>
-                  <Text style={styles.binLocation}>{item.location}</Text>
-                  <Text style={styles.binDistance}>📍 {item.distance || '0.3km'} away</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                    <MapPinIcon size={12} color={colors.textMuted} />
+                    <Text style={styles.binDistance}>{item.location} · {item.distance || '0.3km'} away</Text>
+                  </View>
                 </View>
                 <View style={styles.binRight}>
                   <Text style={[styles.fillLevel, { color: statusClr }]}>{item.fillLevel}%</Text>
@@ -177,7 +175,10 @@ export default function RouteScreen({ navigation }) {
               {/* Action Buttons */}
               <View style={styles.actionRow}>
                 <TouchableOpacity style={styles.navigateBtn} onPress={() => navigateToBin(item)} activeOpacity={0.8}>
-                  <Text style={styles.navigateBtnText}>📍 Navigate</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <MapPinIcon size={14} color={colors.accent} />
+                    <Text style={styles.navigateBtnText}>Navigate</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.collectButton}
@@ -222,7 +223,7 @@ export default function RouteScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 55 },
+  container: { flex: 1 },
   header: { paddingHorizontal: 20, marginBottom: 12 },
   headerRow: {
     flexDirection: 'row',
@@ -230,13 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-  },
-  headerBrand: { fontSize: 16, fontWeight: '700', color: colors.text },
+  headerBrand: { fontSize: 22, fontWeight: '900', color: '#1a3c3c', letterSpacing: 5, fontFamily: 'monospace' },
   headerMenu: { fontSize: 20, color: colors.textSecondary },
   title: { fontSize: 22, fontWeight: '800', color: colors.text },
   subtitle: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },

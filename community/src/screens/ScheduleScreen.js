@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, shadows } from '../theme';
 import api from '../api/axios';
+import TealHeader from '../components/TealHeader';
+import { BellIcon, MapPinIcon, RecycleIcon } from '../components/Icons';
 
 // Try to import expo-notifications (fails gracefully in Expo Go)
 let Notifications = null;
@@ -100,13 +102,14 @@ async function scheduleReminder(item, zone) {
   if (Notifications) {
     try {
       const types = (item.wasteTypes || []).join(' + ');
+      const secondsUntil = Math.max(1, Math.floor((reminderDate.getTime() - Date.now()) / 1000));
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: `Collection Tomorrow - ${zone}`,
           body: `${types} collection at ${item.time}. Remember to place your bins out by 6:30 AM.`,
           sound: true,
         },
-        trigger: { date: reminderDate },
+        trigger: { seconds: secondsUntil },
       });
       return id;
     } catch {
@@ -126,20 +129,41 @@ async function cancelReminder(notifId) {
   }
 }
 
+// Get all dates in a month that fall on a given weekday
+function getDatesForDay(year, month, dayName) {
+  const targetDay = DAY_MAP[dayName];
+  if (targetDay === undefined) return [];
+  const dates = [];
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) {
+    if (new Date(year, month, d).getDay() === targetDay) {
+      dates.push(d);
+    }
+  }
+  return dates;
+}
+
+const WASTE_COLORS = {
+  General: '#22c55e',
+  Organic: '#d97706',
+  Recyclable: '#3b82f6',
+};
+
 export default function ScheduleScreen({ navigation }) {
   const { zone, language } = useZone();
   const en = language === 'en';
   const [schedule, setSchedule] = useState([]);
   const [reminders, setReminders] = useState({});
+  const [selectedDay, setSelectedDay] = useState(null);
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
   const [viewMonth, setViewMonth] = useState(now.getMonth());
 
   const defaultSchedule = [
-    { _id: '1', day: 'Thursday', time: '7:00 AM', wasteTypes: ['General', 'Recyclable'], dateNum: 20 },
-    { _id: '2', day: 'Monday', time: '7:00 AM', wasteTypes: ['Organic'], dateNum: 24 },
-    { _id: '3', day: 'Thursday', time: '7:00 AM', wasteTypes: ['General', 'Recyclable'], dateNum: 27 },
+    { _id: '1', day: 'Monday', time: '7:00 AM - 11:00 AM', wasteTypes: ['General', 'Organic'] },
+    { _id: '2', day: 'Wednesday', time: '7:00 AM - 11:00 AM', wasteTypes: ['Recyclable'] },
+    { _id: '3', day: 'Friday', time: '7:00 AM - 12:00 PM', wasteTypes: ['General', 'Organic', 'Recyclable'] },
   ];
 
   useEffect(() => {
@@ -169,28 +193,27 @@ export default function ScheduleScreen({ navigation }) {
     const isOn = !!reminders[key];
 
     if (!isOn) {
-      // Turning ON
-      const granted = await requestPermissions();
-      if (!granted) {
-        Alert.alert(
-          en ? 'Notifications Disabled' : 'Notifications Désactivées',
-          en ? 'Please enable notifications in your device settings.' : 'Veuillez activer les notifications dans les paramètres.'
-        );
-        return;
-      }
+      // Turning ON — try notifications, fallback to saved preference
+      let notifId = 'saved';
 
-      const notifId = await scheduleReminder(item, zone);
-      if (!notifId) {
-        Alert.alert(
-          en ? 'Already Passed' : 'Déjà Passé',
-          en ? 'The reminder time has already passed for this week.' : 'L\'heure du rappel est déjà passée cette semaine.'
-        );
-        return;
+      if (Notifications) {
+        const granted = await requestPermissions();
+        if (granted) {
+          const scheduled = await scheduleReminder(item, zone);
+          if (scheduled) notifId = scheduled;
+        }
       }
 
       const updated = { ...reminders, [key]: notifId };
       setReminders(updated);
       await AsyncStorage.setItem(`reminders_${zone}`, JSON.stringify(updated));
+
+      const types = (item.wasteTypes || []).join(' + ');
+      if (notifId !== 'saved') {
+        Alert.alert('Reminder Set', `You'll be notified the evening before ${item.day}'s ${types} collection.`);
+      } else {
+        Alert.alert('Reminder Saved', `Reminder saved for ${item.day}'s ${types} collection. Notifications will work in the full app.`);
+      }
     } else {
       // Turning OFF
       await cancelReminder(reminders[key]);
@@ -201,9 +224,21 @@ export default function ScheduleScreen({ navigation }) {
     }
   };
 
-  const collectionDays = new Set(schedule.map((s) => s.dateNum).filter(Boolean));
+  // Build a map of date -> schedule items for the viewed month
+  const dateScheduleMap = {};
+  schedule.forEach((item) => {
+    const dates = getDatesForDay(viewYear, viewMonth, item.day);
+    dates.forEach((d) => {
+      if (!dateScheduleMap[d]) dateScheduleMap[d] = [];
+      dateScheduleMap[d].push(item);
+    });
+  });
+  const collectionDays = new Set(Object.keys(dateScheduleMap).map(Number));
   const calendarRows = getCalendarDays(viewYear, viewMonth);
   const today = now.getDate();
+
+  // Get schedule for selected day
+  const selectedDaySchedule = selectedDay ? (dateScheduleMap[selectedDay] || []) : [];
 
   const prevMonth = () => {
     if (viewMonth === 0) { setViewMonth(11); setViewYear(viewYear - 1); }
@@ -215,36 +250,26 @@ export default function ScheduleScreen({ navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View>
-            <Text style={styles.headerTitle}>{en ? 'Schedule' : 'Calendrier'}</Text>
-            <Text style={styles.headerSub}>ECOPULSE</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={{ paddingBottom: 120 }}>
+      <TealHeader
+        title={en ? 'Collection Schedule' : 'Calendrier de Collecte'}
+        rightElement={
+          <View style={{ backgroundColor: 'rgba(245,158,11,0.2)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}><MapPinIcon size={13} color="#F59E0B" /><Text style={{ fontSize: 11, fontWeight: '700', color: '#F59E0B' }}>{zone}</Text></View>
           </View>
-        </View>
-        <View style={styles.zoneBadge}>
-          <Text style={styles.zoneBadgeDot}>📍</Text>
-          <Text style={styles.zoneBadgeText}>{zone}</Text>
-        </View>
-      </View>
-
-      {/* Banner Image */}
-      <View style={styles.bannerImage}>
-        <Text style={styles.bannerEmoji}>🏙️</Text>
-      </View>
+        }
+      />
 
       {/* Calendar */}
-      <View style={styles.calendarCard}>
+      <View style={[styles.calendarCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.calendarHeader}>
-          <Text style={styles.calendarMonth}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
+          <Text style={[styles.calendarMonth, { color: colors.text }]}>{MONTH_NAMES[viewMonth]} {viewYear}</Text>
           <View style={styles.calendarNav}>
             <TouchableOpacity onPress={prevMonth}>
-              <Text style={styles.navArrow}>‹</Text>
+              <Text style={[styles.navArrow, { color: colors.textSecondary }]}>‹</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={nextMonth}>
-              <Text style={styles.navArrow}>›</Text>
+              <Text style={[styles.navArrow, { color: colors.textSecondary }]}>›</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -252,7 +277,7 @@ export default function ScheduleScreen({ navigation }) {
         {/* Day Headers */}
         <View style={styles.dayHeaderRow}>
           {DAYS.map((d) => (
-            <Text key={d} style={styles.dayHeader}>{d}</Text>
+            <Text key={d} style={[styles.dayHeader, { color: colors.textMuted }]}>{d}</Text>
           ))}
         </View>
 
@@ -262,31 +287,94 @@ export default function ScheduleScreen({ navigation }) {
             {week.map((cell, ci) => {
               const isToday = cell.current && cell.day === today && viewMonth === now.getMonth() && viewYear === now.getFullYear();
               const hasCollection = cell.current && collectionDays.has(cell.day);
+              const isSelected = cell.current && cell.day === selectedDay;
+              // Get unique waste types for this day's dots
+              const dayTypes = cell.current && dateScheduleMap[cell.day]
+                ? [...new Set(dateScheduleMap[cell.day].flatMap(s => s.wasteTypes || []))]
+                : [];
               return (
-                <View key={ci} style={styles.dayCell}>
+                <TouchableOpacity
+                  key={ci}
+                  style={styles.dayCell}
+                  onPress={() => cell.current ? setSelectedDay(cell.day === selectedDay ? null : cell.day) : null}
+                  activeOpacity={0.6}
+                >
                   <View style={[
                     styles.dayCellInner,
-                    isToday && styles.todayCircle,
+                    isToday && { borderWidth: 2, borderColor: colors.accent },
+                    isSelected && { backgroundColor: colors.accent },
+                    hasCollection && !isSelected && !isToday && { backgroundColor: 'rgba(34,197,94,0.08)' },
                   ]}>
                     <Text style={[
                       styles.dayText,
-                      !cell.current && styles.dayTextMuted,
-                      isToday && styles.todayText,
+                      { color: colors.text },
+                      !cell.current && { color: colors.textMuted },
+                      isToday && { fontWeight: '700', color: colors.accent },
+                      isSelected && { fontWeight: '700', color: '#fff' },
+                      hasCollection && !isSelected && { fontWeight: '600' },
                     ]}>
                       {cell.day}
                     </Text>
                   </View>
-                  {hasCollection && <View style={styles.collectionDot} />}
-                </View>
+                  {hasCollection && !isSelected && (
+                    <View style={{ flexDirection: 'row', gap: 2, marginTop: 2 }}>
+                      {dayTypes.map((t) => (
+                        <View key={t} style={[styles.collectionDot, { backgroundColor: WASTE_COLORS[t] || colors.accent }]} />
+                      ))}
+                    </View>
+                  )}
+                </TouchableOpacity>
               );
             })}
           </View>
         ))}
       </View>
 
+      {/* Waste Type Legend */}
+      <View style={styles.legendRow}>
+        {Object.entries(WASTE_COLORS).map(([type, color]) => (
+          <View key={type} style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: color }]} />
+            <Text style={[styles.legendText, { color: colors.textSecondary }]}>{type}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Selected Day Detail */}
+      {selectedDay !== null && (
+        <View style={{ paddingHorizontal: 20, marginBottom: 16 }}>
+          <View style={[styles.selectedDayCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.selectedDayTitle, { color: colors.text }]}>
+              {MONTH_NAMES[viewMonth]} {selectedDay}, {viewYear}
+            </Text>
+            {selectedDaySchedule.length > 0 ? (
+              selectedDaySchedule.map((item, i) => (
+                <View key={i} style={styles.selectedDayItem}>
+                  <View style={{ gap: 3 }}>
+                    {(item.wasteTypes || []).map((t) => (
+                      <View key={t} style={[styles.selectedDayDot, { backgroundColor: WASTE_COLORS[t] || colors.accent }]} />
+                    ))}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.selectedDayType, { color: colors.text }]}>
+                      {(item.wasteTypes || []).join(' + ')}
+                    </Text>
+                    <Text style={{ fontSize: 12, color: colors.textSecondary }}>{item.time}</Text>
+                  </View>
+                </View>
+              ))
+            ) : (
+              <Text style={{ fontSize: 13, color: colors.textMuted, marginTop: 4 }}>
+                {en ? 'No collection scheduled for this day' : 'Pas de collecte prévue ce jour'}
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
+
       {/* Upcoming Collections */}
       <View style={styles.upcomingSection}>
-        <Text style={styles.upcomingTitle}>
+        <Text style={[styles.upcomingTitle, { color: colors.textMuted }]}>
           {en ? 'UPCOMING COLLECTIONS' : 'PROCHAINES COLLECTES'}
         </Text>
 
@@ -296,27 +384,34 @@ export default function ScheduleScreen({ navigation }) {
           return (
             <View
               key={key}
-              style={[styles.collectionCard, isActive && styles.collectionCardActive]}
+              style={[
+                styles.collectionCard,
+                { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                isActive && { backgroundColor: colors.accent, borderColor: colors.accent },
+              ]}
             >
-              <View style={[styles.dateBox, isActive && styles.dateBoxActive]}>
-                <Text style={[styles.dateBoxDay, isActive && styles.dateBoxDayActive]}>
+              <View style={[styles.dateBox, { backgroundColor: colors.background }, isActive && styles.dateBoxActive]}>
+                <Text style={[styles.dateBoxDay, { color: colors.textMuted }, isActive && styles.dateBoxDayActive]}>
                   {item.day?.slice(0, 3).toUpperCase()}
                 </Text>
-                <Text style={[styles.dateBoxNum, isActive && styles.dateBoxNumActive]}>
+                <Text style={[styles.dateBoxNum, { color: colors.text }, isActive && styles.dateBoxNumActive]}>
                   {item.dateNum || (20 + index * 3)}
                 </Text>
               </View>
               <View style={styles.collectionInfo}>
-                <Text style={[styles.collectionType, isActive && { color: '#fff' }]}>
+                <Text style={[styles.collectionType, { color: colors.text }, isActive && { color: '#fff' }]}>
                   {(item.wasteTypes || []).join(' + ')}
                 </Text>
-                <Text style={[styles.collectionTime, isActive && { color: 'rgba(255,255,255,0.7)' }]}>
+                <Text style={[styles.collectionTime, { color: colors.textSecondary }, isActive && { color: 'rgba(255,255,255,0.7)' }]}>
                   {item.time}
                 </Text>
                 {!!reminders[key] && (
-                  <Text style={[styles.reminderLabel, isActive && { color: 'rgba(255,255,255,0.8)' }]}>
-                    🔔 {en ? 'Reminder set' : 'Rappel activé'}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                    <BellIcon size={12} color={isActive ? 'rgba(255,255,255,0.8)' : colors.accent} />
+                    <Text style={[styles.reminderLabel, { color: colors.accent, marginTop: 0 }, isActive && { color: 'rgba(255,255,255,0.8)' }]}>
+                      {en ? 'Reminder set' : 'Rappel activé'}
+                    </Text>
+                  </View>
                 )}
               </View>
               <Switch
@@ -331,9 +426,9 @@ export default function ScheduleScreen({ navigation }) {
       </View>
 
       {/* Reminder Note */}
-      <View style={styles.reminderCard}>
-        <Text style={styles.reminderIcon}>♻️</Text>
-        <Text style={styles.reminderText}>
+      <View style={[styles.reminderCard, { backgroundColor: colors.accentLight }]}>
+        <RecycleIcon size={22} color={colors.accent} />
+        <Text style={[styles.reminderText, { color: colors.text }]}>
           {en
             ? 'Toggle reminders to get notified the evening before collection day.'
             : 'Activez les rappels pour être notifié la veille du jour de collecte.'}
@@ -344,52 +439,18 @@ export default function ScheduleScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingTop: 55 },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 10,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
-  headerSub: { fontSize: 10, color: colors.textMuted, letterSpacing: 1.5 },
-  zoneBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.accentLight,
-    borderRadius: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    gap: 4,
-  },
-  zoneBadgeDot: { fontSize: 10 },
-  zoneBadgeText: { fontSize: 12, fontWeight: '600', color: colors.accent },
-
-  // Banner
-  bannerImage: {
-    height: 100,
-    backgroundColor: '#8b9dad',
-    marginHorizontal: 20,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  bannerEmoji: { fontSize: 50 },
+  container: { flex: 1, backgroundColor: colors.background },
 
   // Calendar
   calendarCard: {
     marginHorizontal: 20,
     backgroundColor: colors.card,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: 18,
     marginBottom: 20,
+    ...shadows.card,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -494,4 +555,54 @@ const styles = StyleSheet.create({
   },
   reminderIcon: { fontSize: 22 },
   reminderText: { fontSize: 13, color: colors.text, flex: 1, lineHeight: 19 },
+
+  // Legend
+  legendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+
+  // Selected Day Card
+  selectedDayCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+  },
+  selectedDayTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 10,
+  },
+  selectedDayItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  selectedDayDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  selectedDayType: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
 });

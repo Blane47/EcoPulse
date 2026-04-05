@@ -45,14 +45,14 @@ export default function Chat() {
 
   useEffect(() => {
     fetchChats();
-    const interval = setInterval(fetchChats, 5000);
+    const interval = setInterval(fetchChats, 2000);
     return () => clearInterval(interval);
   }, [fetchChats]);
 
   useEffect(() => {
     if (!selectedChat) return;
     fetchMessages();
-    pollRef.current = setInterval(fetchMessages, 3000);
+    pollRef.current = setInterval(fetchMessages, 2000);
     return () => clearInterval(pollRef.current);
   }, [selectedChat, fetchMessages]);
 

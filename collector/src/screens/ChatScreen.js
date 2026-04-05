@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
+import { ArrowLeftIcon } from '../components/Icons';
 import api from '../api/axios';
 
 export default function ChatScreen({ navigation }) {
@@ -33,7 +34,7 @@ export default function ChatScreen({ navigation }) {
     init();
 
     // Poll every 4 seconds for new messages
-    pollRef.current = setInterval(fetchMessages, 4000);
+    pollRef.current = setInterval(fetchMessages, 2000);
     return () => clearInterval(pollRef.current);
   }, [fetchMessages]);
 
@@ -103,9 +104,6 @@ export default function ChatScreen({ navigation }) {
     <LinearGradient colors={gradients.screenBg} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
         <View style={styles.headerCenter}>
           <View style={styles.adminAvatar}>
             <Text style={styles.adminAvatarText}>A</Text>
@@ -118,8 +116,13 @@ export default function ChatScreen({ navigation }) {
         <View style={styles.onlineDot} />
       </View>
 
+      {/* Logo Watermark */}
+      <View style={styles.watermarkContainer} pointerEvents="none">
+        <Image source={require('../assets/images/logo.png')} style={styles.watermarkLogo} resizeMode="contain" />
+      </View>
+
       {/* Messages */}
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -171,6 +174,18 @@ export default function ChatScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  watermarkContainer: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 0,
+  },
+  watermarkLogo: {
+    width: 450,
+    height: 450,
+    opacity: 0.3,
+  },
   flex: { flex: 1 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -299,7 +314,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    paddingBottom: 28,
+    paddingBottom: 34,
     backgroundColor: 'rgba(255,255,255,0.95)',
     borderTopWidth: 1,
     borderTopColor: colors.cardBorder,

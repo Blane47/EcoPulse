@@ -5,6 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
 import api from '../api/axios';
+import { MapPinIcon, CameraIcon, ArrowLeftIcon, CheckIcon } from '../components/Icons';
+import TealHeader from '../components/TealHeader';
 
 export default function ReportBinScreen({ navigation }) {
   const { zone, language, profile } = useZone();
@@ -15,6 +17,7 @@ export default function ReportBinScreen({ navigation }) {
   const [locating, setLocating] = useState(true);
   const [photo, setPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   // Auto-grab GPS on screen open
   useEffect(() => {
@@ -75,53 +78,72 @@ export default function ReportBinScreen({ navigation }) {
         reporterPhone: profile?.phone || null,
         photo: photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : null,
       });
-      Alert.alert(
-        en ? 'Report Submitted!' : 'Signalement Envoyé!',
-        en ? 'Thank you for helping keep Buea clean.' : 'Merci d\'aider à garder Buea propre.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      setSubmitted(true);
     } catch {
-      Alert.alert(en ? 'Submitted (offline)' : 'Envoyé (hors ligne)', '', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      setSubmitted(true);
     }
     setSubmitting(false);
   };
 
+  if (submitted) {
+    return (
+      <View style={[styles.successContainer, { backgroundColor: colors.background }]}>
+        <View style={styles.successCard}>
+          <View style={styles.successIconCircle}>
+            <CheckIcon size={40} color="#fff" strokeWidth={2.5} />
+          </View>
+          <Text style={styles.successTitle}>{en ? 'Report Submitted!' : 'Signalement Envoyé!'}</Text>
+          <Text style={styles.successMessage}>
+            {en ? 'Thank you for helping keep Buea clean. The admin will review your report shortly.' : 'Merci d\'aider à garder Buea propre. L\'admin examinera votre signalement sous peu.'}
+          </Text>
+          <TouchableOpacity
+            style={styles.successButton}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.successButtonText}>{en ? 'Back to Home' : 'Retour à l\'accueil'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-      <Text style={styles.title}>{en ? 'Report Waste Pile' : 'Signaler un Tas de Déchets'}</Text>
-      <Text style={styles.subtitle}>
-        {en ? 'Snap a photo and we\'ll grab your location automatically' : 'Prenez une photo et nous récupérons votre position automatiquement'}
-      </Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={{ paddingBottom: 120 }}>
+      <TealHeader
+        title={en ? 'Report Waste Pile' : 'Signaler un Tas de Déchets'}
+        subtitle={en ? 'Snap a photo and we\'ll grab your location' : 'Prenez une photo et nous récupérons votre position'}
+      />
 
       {/* Location Status */}
-      <View style={styles.locationCard}>
+      <View style={[styles.locationCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.locationLeft}>
-          <Text style={{ fontSize: 20 }}>📍</Text>
+          <MapPinIcon size={20} color={colors.accent} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.locationTitle}>{en ? 'Your Location' : 'Votre Position'}</Text>
+            <Text style={[styles.locationTitle, { color: colors.text }]}>{en ? 'Your Location' : 'Votre Position'}</Text>
             {locating ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
                 <ActivityIndicator size="small" color={colors.accent} />
-                <Text style={styles.locationStatus}>{en ? 'Getting GPS...' : 'Localisation GPS...'}</Text>
+                <Text style={[styles.locationStatus, { color: colors.textMuted }]}>{en ? 'Getting GPS...' : 'Localisation GPS...'}</Text>
               </View>
             ) : coords ? (
-              <Text style={styles.locationCoords}>{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</Text>
+              <Text style={[styles.locationCoords, { color: colors.accent }]}>{coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</Text>
             ) : (
               <Text style={[styles.locationStatus, { color: colors.critical }]}>{en ? 'Unavailable' : 'Indisponible'}</Text>
             )}
           </View>
         </View>
-        {coords && <Text style={styles.locationCheck}>✓</Text>}
+        {coords && <Text style={[styles.locationCheck, { color: colors.accent }]}>✓</Text>}
       </View>
 
       {/* Photo Section */}
-      <Text style={styles.label}>{en ? 'PHOTO EVIDENCE' : 'PREUVE PHOTO'}</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>{en ? 'PHOTO EVIDENCE' : 'PREUVE PHOTO'}</Text>
       {photo ? (
         <View style={styles.photoPreviewContainer}>
           <Image source={{ uri: photo.uri }} style={styles.photoPreview} />
           <View style={styles.photoActions}>
-            <TouchableOpacity style={styles.retakeBtn} onPress={takePhoto}>
-              <Text style={styles.retakeBtnText}>📷 {en ? 'Retake' : 'Reprendre'}</Text>
+            <TouchableOpacity style={[styles.retakeBtn, { borderColor: colors.accent }]} onPress={takePhoto}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><CameraIcon size={16} color={colors.accent} /><Text style={[styles.retakeBtnText, { color: colors.accent }]}>{en ? 'Retake' : 'Reprendre'}</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.retakeBtn, { borderColor: colors.critical }]} onPress={() => setPhoto(null)}>
               <Text style={[styles.retakeBtnText, { color: colors.critical }]}>✕ {en ? 'Remove' : 'Supprimer'}</Text>
@@ -129,26 +151,26 @@ export default function ReportBinScreen({ navigation }) {
           </View>
         </View>
       ) : (
-        <TouchableOpacity style={styles.cameraBtn} onPress={takePhoto} activeOpacity={0.7}>
-          <Text style={{ fontSize: 32 }}>📸</Text>
-          <Text style={styles.cameraBtnText}>{en ? 'Take Live Photo' : 'Prendre Photo en Direct'}</Text>
-          <Text style={styles.cameraBtnSub}>{en ? 'Camera only — no gallery uploads' : 'Caméra uniquement — pas de téléchargement'}</Text>
+        <TouchableOpacity style={[styles.cameraBtn, { backgroundColor: colors.card, borderColor: colors.accent }]} onPress={takePhoto} activeOpacity={0.7}>
+          <CameraIcon size={32} color={colors.accent} />
+          <Text style={[styles.cameraBtnText, { color: colors.text }]}>{en ? 'Take Live Photo' : 'Prendre Photo en Direct'}</Text>
+          <Text style={[styles.cameraBtnSub, { color: colors.textMuted }]}>{en ? 'Camera only — no gallery uploads' : 'Caméra uniquement — pas de téléchargement'}</Text>
         </TouchableOpacity>
       )}
 
       {/* Description */}
-      <Text style={styles.label}>{en ? 'LOCATION DESCRIPTION (OPTIONAL)' : 'DESCRIPTION DU LIEU (OPTIONNEL)'}</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>{en ? 'LOCATION DESCRIPTION (OPTIONAL)' : 'DESCRIPTION DU LIEU (OPTIONNEL)'}</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: colors.cardBorder, backgroundColor: colors.card, color: colors.text }]}
         placeholder={en ? 'e.g. Behind UB Junction, near the market' : 'ex. Derrière le Carrefour UB, près du marché'}
         placeholderTextColor={colors.textMuted}
         value={description}
         onChangeText={setDescription}
       />
 
-      <Text style={styles.label}>{en ? 'ADDITIONAL NOTES (OPTIONAL)' : 'NOTES SUPPLÉMENTAIRES (OPTIONNEL)'}</Text>
+      <Text style={[styles.label, { color: colors.textMuted }]}>{en ? 'ADDITIONAL NOTES (OPTIONAL)' : 'NOTES SUPPLÉMENTAIRES (OPTIONNEL)'}  </Text>
       <TextInput
-        style={[styles.input, styles.textarea]}
+        style={[styles.input, styles.textarea, { borderColor: colors.cardBorder, backgroundColor: colors.card, color: colors.text }]}
         placeholder={en ? 'e.g. Been here for 3 days, very smelly' : 'ex. Là depuis 3 jours, très malodorant'}
         placeholderTextColor={colors.textMuted}
         value={note}
@@ -173,7 +195,7 @@ export default function ReportBinScreen({ navigation }) {
         )}
       </TouchableOpacity>
 
-      <Text style={styles.footerNote}>
+      <Text style={[styles.footerNote, { color: colors.textMuted }]}>
         {en
           ? 'Your GPS location will be sent with the photo so the admin can locate the exact spot.'
           : 'Votre position GPS sera envoyée avec la photo pour que l\'admin puisse localiser l\'endroit exact.'}
@@ -267,5 +289,49 @@ const styles = StyleSheet.create({
     marginTop: 16,
     lineHeight: 16,
     paddingHorizontal: 10,
+  },
+
+  // Success Screen
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  successCard: {
+    alignItems: 'center',
+  },
+  successIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+  },
+  successTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  successMessage: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 21,
+    marginBottom: 32,
+  },
+  successButton: {
+    backgroundColor: colors.accent,
+    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+  },
+  successButtonText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

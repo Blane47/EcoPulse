@@ -4,8 +4,10 @@ import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
+import { SearchIcon, MapPinIcon, CheckIcon } from '../components/Icons';
 import api from '../api/axios';
 
+const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN || '';
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const statusColors = { critical: colors.critical, warning: colors.warning, optimal: colors.accent };
 
@@ -14,47 +16,120 @@ const buildMapHTML = (bins, searchQuery) => {
     .filter((b) => b.coordinates?.lat)
     .filter((b) => !searchQuery || b.location.toLowerCase().includes(searchQuery.toLowerCase()) || b.binId.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const markers = filtered.map((bin) => {
-    const color = bin.status === 'critical' ? '#ef4444' : bin.status === 'warning' ? '#f59e0b' : '#22c55e';
-    return `
-      L.circleMarker([${bin.coordinates.lat}, ${bin.coordinates.lng}], {
-        radius: 12,
-        fillColor: '${color}',
-        color: '#fff',
-        weight: 2,
-        opacity: 1,
-        fillOpacity: 0.9
-      }).addTo(map)
-        .on('click', function() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'markerPress', binId: '${bin._id}' }));
-        })
-        .bindTooltip('${bin.binId}', { permanent: false, direction: 'top', offset: [0, -10] });
-    `;
-  }).join('\n');
+  const geojson = {
+    type: 'FeatureCollection',
+    features: filtered.map((bin) => ({
+      type: 'Feature',
+      properties: {
+        id: bin._id,
+        binId: bin.binId,
+        color: bin.status === 'critical' ? '#ef4444' : bin.status === 'warning' ? '#f59e0b' : '#22c55e',
+        fillLevel: bin.fillLevel,
+      },
+      geometry: {
+        type: 'Point',
+        coordinates: [bin.coordinates.lng, bin.coordinates.lat],
+      },
+    })),
+  };
 
   return `
     <!DOCTYPE html>
     <html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-      <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-      <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+      <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+      <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
       <style>
         * { margin: 0; padding: 0; }
+        body { overflow: hidden; }
         #map { width: 100vw; height: 100vh; }
+        .mapboxgl-ctrl-attrib { display: none !important; }
       </style>
     </head>
     <body>
       <div id="map"></div>
       <script>
-        var map = L.map('map', { zoomControl: false }).setView([4.1597, 9.2920], 14);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap',
-          maxZoom: 19
-        }).addTo(map);
-        ${markers}
-        map.on('click', function() {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapPress' }));
+        mapboxgl.accessToken = '${MAPBOX_TOKEN}';
+        const map = new mapboxgl.Map({
+          container: 'map',
+          style: 'mapbox://styles/mapbox/streets-v12',
+          center: [9.2920, 4.1597],
+          zoom: 13.5,
+          attributionControl: false,
+        });
+
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
+
+        map.on('load', () => {
+          map.addSource('bins', {
+            type: 'geojson',
+            data: ${JSON.stringify(geojson)},
+          });
+
+          // Outer glow
+          map.addLayer({
+            id: 'bins-glow',
+            type: 'circle',
+            source: 'bins',
+            paint: {
+              'circle-radius': 18,
+              'circle-color': ['get', 'color'],
+              'circle-opacity': 0.15,
+            },
+          });
+
+          // Main circle
+          map.addLayer({
+            id: 'bins-circle',
+            type: 'circle',
+            source: 'bins',
+            paint: {
+              'circle-radius': 10,
+              'circle-color': ['get', 'color'],
+              'circle-stroke-width': 2.5,
+              'circle-stroke-color': '#ffffff',
+              'circle-opacity': 0.9,
+            },
+          });
+
+          // Fill level label
+          map.addLayer({
+            id: 'bins-label',
+            type: 'symbol',
+            source: 'bins',
+            layout: {
+              'text-field': ['concat', ['get', 'fillLevel'], '%'],
+              'text-size': 9,
+              'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'],
+              'text-offset': [0, -2],
+            },
+            paint: {
+              'text-color': '#1f2937',
+              'text-halo-color': '#ffffff',
+              'text-halo-width': 1,
+            },
+          });
+
+          // Click handler
+          map.on('click', 'bins-circle', (e) => {
+            const feature = e.features[0];
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'markerPress',
+              binId: feature.properties.id,
+            }));
+          });
+
+          map.on('click', (e) => {
+            const features = map.queryRenderedFeatures(e.point, { layers: ['bins-circle'] });
+            if (!features.length) {
+              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'mapPress' }));
+            }
+          });
+
+          // Cursor
+          map.on('mouseenter', 'bins-circle', () => map.getCanvas().style.cursor = 'pointer');
+          map.on('mouseleave', 'bins-circle', () => map.getCanvas().style.cursor = '');
         });
       </script>
     </body>
@@ -155,7 +230,9 @@ export default function MapScreen() {
       {/* Search Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <View style={styles.searchIcon}>
+            <SearchIcon size={16} color={colors.textMuted} />
+          </View>
           <TextInput
             style={styles.searchInput}
             placeholder="Search bin or location..."
@@ -163,13 +240,10 @@ export default function MapScreen() {
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
-          <TouchableOpacity>
-            <Text style={styles.micIcon}>🎤</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
-      {/* OpenStreetMap via WebView */}
+      {/* Mapbox Map */}
       <WebView
         ref={webViewRef}
         style={styles.map}
@@ -227,7 +301,10 @@ export default function MapScreen() {
             <View style={styles.sheetActions}>
               <TouchableOpacity style={styles.navigateBtn} onPress={handleNavigate} activeOpacity={0.8}>
                 <LinearGradient colors={gradients.greenButton} style={styles.actionGradient}>
-                  <Text style={styles.actionBtnText}>Navigate 🗺️</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={styles.actionBtnText}>Navigate</Text>
+                    <MapPinIcon size={16} color="#fff" />
+                  </View>
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.collectBtn} onPress={handleCollect} activeOpacity={0.8} disabled={collecting}>
@@ -235,7 +312,10 @@ export default function MapScreen() {
                   {collecting ? (
                     <ActivityIndicator color={colors.accent} size="small" />
                   ) : (
-                    <Text style={styles.collectBtnText}>Mark Collected ✅</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={styles.collectBtnText}>Mark Collected</Text>
+                      <CheckIcon size={16} color={colors.accent} />
+                    </View>
                   )}
                 </View>
               </TouchableOpacity>
@@ -269,14 +349,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     ...shadows.cardHover,
   },
-  searchIcon: { fontSize: 16, marginRight: 10 },
+  searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, fontSize: 14, color: colors.text },
-  micIcon: { fontSize: 18, marginLeft: 8 },
 
   // Bottom Sheet
   bottomSheet: {
     position: 'absolute',
-    bottom: 80,
+    bottom: 100,
     left: 0,
     right: 0,
     backgroundColor: '#fff',

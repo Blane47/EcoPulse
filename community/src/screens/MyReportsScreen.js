@@ -3,17 +3,29 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image } from 'react
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useZone } from '../context/ZoneContext';
-import { colors } from '../theme';
+import { colors, shadows } from '../theme';
 import api from '../api/axios';
+import TealHeader from '../components/TealHeader';
+import { BellIcon, RecycleIcon, MapPinIcon, StarOutlineIcon, StarIcon, ShieldCheckIcon, TrophyIcon } from '../components/Icons';
+import { CollectionIcon, ReportIcon } from '../components/TabIcons';
 
 const TABS = ['Notifications', 'My Reports'];
 
-export default function MyReportsScreen({ navigation }) {
+export default function MyReportsScreen({ navigation, route }) {
   const { language, profile } = useZone();
   const en = language === 'en';
-  const [activeTab, setActiveTab] = useState('My Reports');
+  const { zone } = useZone();
+  const [activeTab, setActiveTab] = useState(route?.params?.tab || 'My Reports');
   const [reports, setReports] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Switch tab when navigated with params
+  useEffect(() => {
+    if (route?.params?.tab) {
+      setActiveTab(route.params.tab);
+    }
+  }, [route?.params?.tab]);
 
   const fetchReports = useCallback(async () => {
     try {
@@ -27,11 +39,21 @@ export default function MyReportsScreen({ navigation }) {
     setLoading(false);
   }, [profile?.phone]);
 
+  const fetchAnnouncements = useCallback(async () => {
+    try {
+      const { data } = await api.get('/announcements', { params: { zone } });
+      setAnnouncements(data);
+    } catch {
+      setAnnouncements([]);
+    }
+  }, [zone]);
+
   // Refetch every time the tab is focused
   useFocusEffect(
     useCallback(() => {
       fetchReports();
-    }, [fetchReports])
+      fetchAnnouncements();
+    }, [fetchReports, fetchAnnouncements])
   );
 
   const statusConfig = {
@@ -46,34 +68,21 @@ export default function MyReportsScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image source={require('../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.brandText}>EcoPulse</Text>
-        </View>
-        <TouchableOpacity>
-          <Text style={{ fontSize: 18 }}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-
-      <Text style={styles.pageTitle}>
-        {en ? 'Updates / Notifications' : 'Mises à jour / Notifications'}
-      </Text>
-      <Text style={styles.pageSubtitle}>
-        {en ? 'Stay updated with your local impact' : 'Restez informé de votre impact local'}
-      </Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <TealHeader
+        title={en ? 'Updates' : 'Mises à jour'}
+        subtitle={en ? 'Stay updated with your local impact' : 'Restez informé de votre impact local'}
+      />
 
       {/* Tabs */}
-      <View style={styles.tabsRow}>
+      <View style={[styles.tabsRow, { borderBottomColor: colors.cardBorder }]}>
         {TABS.map((tab) => (
           <TouchableOpacity
             key={tab}
-            style={[styles.tab, activeTab === tab && styles.tabActive]}
+            style={[styles.tab, activeTab === tab && { borderBottomColor: colors.accent }]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === tab && { color: colors.text, fontWeight: '700' }]}>
               {tab}
             </Text>
           </TouchableOpacity>
@@ -84,42 +93,58 @@ export default function MyReportsScreen({ navigation }) {
         <FlatList
           data={reports}
           keyExtractor={(item) => item._id}
-          contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}
+          contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 20 }}
           ListHeaderComponent={
             <>
-              {/* Community Hero Badge */}
-              <LinearGradient
-                colors={['#22c55e', '#15803d']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.heroBadge}
-              >
-                <View style={styles.heroBadgeIcon}>
-                  <Text style={{ fontSize: 24 }}>♻️</Text>
-                </View>
-                <View style={styles.heroBadgeInfo}>
-                  <Text style={styles.heroBadgeTitle}>
-                    {en ? 'Community Hero' : 'Héros Communautaire'} 🏆
-                  </Text>
-                  <Text style={styles.heroBadgeSub}>
-                    Level 4 Active Contributor
-                  </Text>
-                </View>
-              </LinearGradient>
+              {/* Community Level Badge */}
+              {(() => {
+                const count = reports.length;
+                const levels = [
+                  { min: 50, title: en ? 'Zone Leader' : 'Leader de Zone', Icon: TrophyIcon, color: '#F59E0B', gradient: ['#d97706', '#b45309'] },
+                  { min: 25, title: en ? 'Eco Hero' : 'Éco Héros', Icon: TrophyIcon, color: '#F59E0B', gradient: ['#F59E0B', '#d97706'] },
+                  { min: 10, title: en ? 'Community Champion' : 'Champion Communautaire', Icon: ShieldCheckIcon, color: '#22c55e', gradient: ['#22c55e', '#15803d'] },
+                  { min: 3, title: en ? 'Active Reporter' : 'Reporter Actif', Icon: StarIcon, color: '#F59E0B', gradient: ['#22c55e', '#166534'] },
+                  { min: 0, title: en ? 'New Member' : 'Nouveau Membre', Icon: StarOutlineIcon, color: '#9ca3af', gradient: ['#6b7280', '#4b5563'] },
+                ];
+                const level = levels.find(l => count >= l.min);
+                const levelNum = levels.length - levels.indexOf(level);
+                return (
+                  <LinearGradient
+                    colors={level.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.heroBadge}
+                  >
+                    <View style={styles.heroBadgeIcon}>
+                      <level.Icon size={24} color="#fff" />
+                    </View>
+                    <View style={styles.heroBadgeInfo}>
+                      <Text style={styles.heroBadgeTitle}>{level.title}</Text>
+                      <Text style={styles.heroBadgeSub}>
+                        Level {levelNum} · {count} {count === 1 ? 'report' : 'reports'}
+                      </Text>
+                    </View>
+                  </LinearGradient>
+                );
+              })()}
 
-              <Text style={styles.sectionTitle}>RECENT REPORTS</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>RECENT REPORTS</Text>
             </>
           }
           renderItem={({ item }) => {
             const sc = statusConfig[item.status] || statusConfig.pending;
             return (
-              <View style={styles.reportCard}>
-                <View style={styles.reportImagePlaceholder}>
-                  <Text style={{ fontSize: 28 }}>🗑️</Text>
-                </View>
+              <View style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                {item.photo ? (
+                  <Image source={{ uri: item.photo }} style={styles.reportPhoto} />
+                ) : (
+                  <View style={[styles.reportImagePlaceholder, { backgroundColor: colors.background }]}>
+                    <CollectionIcon size={28} color={colors.textMuted} />
+                  </View>
+                )}
                 <View style={styles.reportInfo}>
-                  <Text style={styles.reportLocation}>{item.location}</Text>
-                  <Text style={styles.reportDate}>{formatDate(item.createdAt)}</Text>
+                  <Text style={[styles.reportLocation, { color: colors.text }]}>{item.location}</Text>
+                  <Text style={[styles.reportDate, { color: colors.textSecondary }]}>{formatDate(item.createdAt)}</Text>
                 </View>
                 <Text style={[styles.reportStatus, { color: sc.color }]}>{sc.label}</Text>
               </View>
@@ -129,7 +154,7 @@ export default function MyReportsScreen({ navigation }) {
             reports.length > 0 ? (
               <View style={styles.impactCard}>
                 <View style={styles.impactOverlay}>
-                  <Text style={{ fontSize: 40, marginBottom: 8 }}>🚛</Text>
+                  <CollectionIcon size={40} color="#fff" />
                   <Text style={styles.impactText}>
                     {en
                       ? `Your reports helped collect ${reports.length} bins this month 🏆`
@@ -142,8 +167,8 @@ export default function MyReportsScreen({ navigation }) {
           ListEmptyComponent={
             !loading && (
               <View style={styles.empty}>
-                <Text style={{ fontSize: 28, marginBottom: 8 }}>📋</Text>
-                <Text style={styles.emptyText}>{en ? 'No reports yet' : 'Aucun signalement'}</Text>
+                <View style={{ marginBottom: 8 }}><ReportIcon size={28} color={colors.textMuted} /></View>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>{en ? 'No reports yet' : 'Aucun signalement'}</Text>
                 <TouchableOpacity style={styles.reportBtn} onPress={() => navigation.navigate('ReportBin')}>
                   <Text style={styles.reportBtnText}>{en ? 'Report a Bin' : 'Signaler un Bac'}</Text>
                 </TouchableOpacity>
@@ -152,17 +177,68 @@ export default function MyReportsScreen({ navigation }) {
           }
         />
       ) : (
-        <View style={styles.notificationsEmpty}>
-          <Text style={{ fontSize: 40, marginBottom: 12 }}>🔔</Text>
-          <Text style={styles.notificationsEmptyText}>
-            {en ? 'No new notifications' : 'Pas de nouvelles notifications'}
-          </Text>
-          <Text style={styles.notificationsEmptySub}>
-            {en
-              ? "We'll notify you about collection updates in your zone"
-              : 'Nous vous informerons des mises à jour de collecte dans votre zone'}
-          </Text>
-        </View>
+        <FlatList
+          data={announcements}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 120 }}
+          renderItem={({ item }) => {
+            const typeConfig = {
+              urgent: { bg: '#fef2f2', border: '#fca5a5', color: colors.critical, label: 'URGENT' },
+              warning: { bg: '#fefce8', border: '#fde047', color: colors.warning, label: 'WARNING' },
+              info: { bg: '#f0fdf4', border: '#86efac', color: colors.accent, label: 'INFO' },
+            };
+            const tc = typeConfig[item.type] || typeConfig.info;
+            const timeAgo = (() => {
+              const mins = Math.floor((Date.now() - new Date(item.createdAt).getTime()) / 60000);
+              if (mins < 60) return `${mins}m ago`;
+              const hrs = Math.floor(mins / 60);
+              if (hrs < 24) return `${hrs}h ago`;
+              return `${Math.floor(hrs / 24)}d ago`;
+            })();
+            return (
+              <View style={[styles.announcementCard, { backgroundColor: tc.bg, borderColor: tc.border }]}>
+                <View style={styles.announcementHeader}>
+                  <View style={[styles.announcementTypeBadge, { backgroundColor: tc.color + '20' }]}>
+                    <Text style={[styles.announcementTypeText, { color: tc.color }]}>{tc.label}</Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: colors.textMuted }}>{timeAgo}</Text>
+                </View>
+                <Text style={[styles.announcementTitle, { color: colors.text }]}>{item.title}</Text>
+                <Text style={[styles.announcementMessage, { color: colors.textSecondary }]}>{item.message}</Text>
+                {item.zone !== 'all' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                    <MapPinIcon size={11} color={colors.textMuted} />
+                    <Text style={{ fontSize: 11, color: colors.textMuted }}>{item.zone}</Text>
+                  </View>
+                )}
+              </View>
+            );
+          }}
+          ListEmptyComponent={
+            <View style={styles.notificationsEmpty}>
+              <View style={{ marginBottom: 16 }}><BellIcon size={44} color={colors.textMuted} /></View>
+              <Text style={[styles.notificationsEmptyText, { color: colors.text }]}>
+                {en ? 'You\'re all caught up!' : 'Vous êtes à jour!'}
+              </Text>
+              <Text style={[styles.notificationsEmptySub, { color: colors.textSecondary }]}>
+                {en
+                  ? 'No new announcements from the admin. Here are some tips:'
+                  : 'Pas de nouvelles annonces. Voici quelques conseils:'}
+              </Text>
+              <View style={[styles.tipsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <Text style={[styles.tipItem, { color: colors.textSecondary }]}>
+                  {en ? 'Report overflowing bins to help collectors prioritize' : 'Signalez les bacs débordants pour aider les collecteurs'}
+                </Text>
+                <Text style={[styles.tipItem, { color: colors.textSecondary }]}>
+                  {en ? 'Set reminders in the Schedule tab for collection days' : 'Activez les rappels dans l\'onglet Calendrier'}
+                </Text>
+                <Text style={[styles.tipItem, { color: colors.textSecondary }]}>
+                  {en ? 'Sort your waste into General, Organic, and Recyclable bins' : 'Triez vos déchets en Général, Organique et Recyclable'}
+                </Text>
+              </View>
+            </View>
+          }
+        />
       )}
 
       {/* Floating Action Button — always visible on My Reports tab */}
@@ -180,26 +256,7 @@ export default function MyReportsScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, paddingTop: 55 },
-
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-  },
-  brandText: { fontSize: 18, fontWeight: '800', color: colors.accent },
-
-  pageTitle: { fontSize: 24, fontWeight: '800', color: colors.text, paddingHorizontal: 20 },
-  pageSubtitle: { fontSize: 13, color: colors.textSecondary, paddingHorizontal: 20, marginTop: 4, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: colors.background },
 
   // Tabs
   tabsRow: {
@@ -256,12 +313,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.card,
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.cardBorder,
     padding: 12,
-    marginBottom: 10,
+    marginBottom: 12,
     gap: 12,
+    ...shadows.card,
+  },
+  reportPhoto: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
   },
   reportImagePlaceholder: {
     width: 56,
@@ -308,12 +371,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   notificationsEmptyText: { fontSize: 16, fontWeight: '600', color: colors.text, marginBottom: 8 },
-  notificationsEmptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  notificationsEmptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19, marginBottom: 20 },
+  tipsCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    width: '100%',
+  },
+  tipItem: {
+    fontSize: 13,
+    lineHeight: 20,
+    paddingVertical: 8,
+    paddingLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+    marginBottom: 8,
+  },
 
   // Floating Action Button
   fab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 110,
     right: 20,
     width: 56,
     height: 56,
@@ -328,4 +406,37 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   fabText: { fontSize: 28, color: '#fff', fontWeight: '600', marginTop: -2 },
+
+  // Announcement Cards
+  announcementCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
+  },
+  announcementHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  announcementTypeBadge: {
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  announcementTypeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  announcementTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  announcementMessage: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
 });

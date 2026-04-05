@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl, Image, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import GradientBrand from '../components/GradientBrand';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
+import { BellIcon, MapPinIcon } from '../components/Icons';
 import api from '../api/axios';
 
 const truckBanner = require('../assets/images/truck-banner.png');
@@ -77,21 +79,33 @@ export default function HomeScreen({ navigation }) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />}
         ListHeaderComponent={
           <>
-            {/* Greeting row */}
-            <View style={styles.greetingRow}>
-              {user?.avatar ? (
-                <Image source={{ uri: user.avatar }} style={styles.avatarSmallImage} />
-              ) : (
-                <View style={styles.avatarSmall}>
-                  <Text style={styles.avatarSmallText}>
-                    {(user?.name || 'C').split(' ').map((n) => n[0]).join('')}
-                  </Text>
+            {/* Teal Banner Header */}
+            <LinearGradient
+              colors={['#0a2a3c', '#0f3d52', '#134b63']}
+              style={styles.tealBanner}
+            >
+              <View style={styles.tealHeaderRow}>
+                <GradientBrand fontSize={20} />
+                <View style={styles.tealNotif}>
+                  <BellIcon size={20} color="#F59E0B" />
                 </View>
-              )}
-              <Text style={styles.greetingText}>
-                {greeting()}, {user?.name?.split(' ')[0] || 'Collector'} 👋🌿
-              </Text>
-            </View>
+              </View>
+              {/* Greeting row */}
+              <View style={styles.greetingRow}>
+                {user?.avatar ? (
+                  <Image source={{ uri: user.avatar }} style={styles.avatarSmallImage} />
+                ) : (
+                  <View style={styles.avatarSmall}>
+                    <Text style={styles.avatarSmallText}>
+                      {(user?.name || 'C').split(' ').map((n) => n[0]).join('')}
+                    </Text>
+                  </View>
+                )}
+                <Text style={[styles.greetingText, { color: '#fff' }]}>
+                  {greeting()}, {user?.name?.split(' ')[0] || 'Collector'} 👋
+                </Text>
+              </View>
+            </LinearGradient>
 
             {/* On Leave Banner */}
             {user?.status === 'on-leave' && (
@@ -179,7 +193,7 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
                   <Text style={styles.sectionTitle}>Priority Bins</Text>
-                  <Text style={styles.sectionDot}> 🔴</Text>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.critical, marginLeft: 6 }} />
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('Route')}>
                   <Text style={styles.viewAll}>VIEW ALL</Text>
@@ -201,7 +215,10 @@ export default function HomeScreen({ navigation }) {
                 <Image source={require('../assets/images/bin-icon.png')} style={styles.binIconImage} resizeMode="cover" />
                 <View style={styles.binInfo}>
                   <Text style={styles.binId}>{item.binId}</Text>
-                  <Text style={styles.binDistance}>📍 {item.distance || '0.3km'} away</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+                    <MapPinIcon size={12} color={colors.textSecondary} />
+                    <Text style={styles.binDistance}>{item.distance || '0.3km'} away</Text>
+                  </View>
                 </View>
               </View>
               <View style={styles.binCardRight}>
@@ -212,7 +229,10 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
             <TouchableOpacity style={styles.binNavigateBtn} onPress={() => navigateToBin(item)} activeOpacity={0.8}>
-              <Text style={styles.binNavigateText}>📍 Navigate</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <MapPinIcon size={14} color={colors.accent} />
+                <Text style={styles.binNavigateText}>Navigate</Text>
+              </View>
             </TouchableOpacity>
           </TouchableOpacity>
         )}
@@ -221,20 +241,45 @@ export default function HomeScreen({ navigation }) {
             <View style={styles.binCardFooter}>
               <TouchableOpacity style={styles.navigateButton} onPress={() => navigation.navigate('Route')}>
                 <LinearGradient colors={gradients.greenButton} style={styles.navigateGradient}>
-                  <Text style={styles.navigateText}>📍 Navigate</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <MapPinIcon size={14} color="#fff" />
+                    <Text style={styles.navigateText}>Navigate</Text>
+                  </View>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
           ) : null
         }
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
       />
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 55 },
+  container: { flex: 1 },
+  tealBanner: {
+    paddingTop: 50,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 40,
+    borderBottomRightRadius: 40,
+    marginBottom: 16,
+  },
+  tealHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  tealNotif: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -453,7 +498,7 @@ const styles = StyleSheet.create({
   },
   binInfo: { flex: 1 },
   binId: { fontSize: 15, fontWeight: '700', color: colors.text },
-  binDistance: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  binDistance: { fontSize: 12, color: colors.textSecondary },
   binCardRight: { alignItems: 'flex-end', marginRight: -8 },
   binFill: { fontSize: 20, fontWeight: '800' },
   binStatusBadge: {

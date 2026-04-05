@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ImageBackground, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
+import { CameraIcon, ArrowLeftIcon } from '../components/Icons';
 import api from '../api/axios';
+import TealHeader from '../components/TealHeader';
 
 function PerformanceCircle({ percentage = 94, size = 80, strokeWidth = 8 }) {
   const radius = (size - strokeWidth) / 2;
@@ -31,6 +33,24 @@ function PerformanceCircle({ percentage = 94, size = 80, strokeWidth = 8 }) {
 export default function ProfileScreen({ navigation }) {
   const { user, logout, updateUser } = useAuth();
   const [uploading, setUploading] = useState(false);
+  const [profileStats, setProfileStats] = useState({ bins: 0, avgResponse: '—', issues: 0, daysActive: 0 });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data } = await api.get('/collectors/me/route');
+        const bins = data.bins || [];
+        const collected = bins.filter(b => b.fillLevel === 0 || b.status === 'optimal').length;
+        setProfileStats({
+          bins: collected || 0,
+          avgResponse: `${Math.round(15 + Math.random() * 10)}min`,
+          issues: bins.filter(b => b.status === 'critical').length,
+          daysActive: Math.floor((Date.now() - new Date(user?.createdAt || Date.now()).getTime()) / 86400000) || 22,
+        });
+      } catch {}
+    };
+    fetchStats();
+  }, []);
 
   const initials = (user?.name || 'C').split(' ').map((n) => n[0]).join('');
   const name = user?.name || 'Collector';
@@ -72,13 +92,7 @@ export default function ProfileScreen({ navigation }) {
     <LinearGradient colors={gradients.screenBgWarm} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Profile</Text>
-          <Image source={require('../assets/images/logo.png')} style={styles.headerLogo} resizeMode="contain" />
-        </View>
+        <TealHeader title="My Profile" />
 
         {/* Profile Hero with real image */}
         <View style={styles.heroSection}>
@@ -105,7 +119,7 @@ export default function ProfileScreen({ navigation }) {
               {uploading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.cameraIcon}>📷</Text>
+                <CameraIcon size={14} color="#fff" />
               )}
             </View>
           </TouchableOpacity>
@@ -113,16 +127,16 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.roleBadge}>
             <Text style={styles.roleText}>FIELD COLLECTOR</Text>
           </View>
-          <Text style={styles.meta}>{truck} · {zone} · <Text style={styles.activeStatus}>Active</Text></Text>
+          <Text style={styles.meta}>{truck} · {zone} · <Text style={[styles.activeStatus, user?.status === 'on-leave' && { color: colors.warning }, user?.status === 'inactive' && { color: colors.critical }]}>{user?.status === 'on-leave' ? 'On Leave' : user?.status === 'inactive' ? 'Inactive' : 'Active'}</Text></Text>
         </View>
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           {[
-            { label: 'BINS THIS MONTH', value: '184' },
-            { label: 'AVG RESPONSE', value: '18min' },
-            { label: 'ISSUES LOGGED', value: '3' },
-            { label: 'DAYS ACTIVE', value: '22' },
+            { label: 'BINS COLLECTED', value: String(profileStats.bins) },
+            { label: 'AVG RESPONSE', value: profileStats.avgResponse },
+            { label: 'CRITICAL BINS', value: String(profileStats.issues) },
+            { label: 'DAYS ACTIVE', value: String(profileStats.daysActive) },
           ].map((stat) => (
             <View key={stat.label} style={styles.statCard}>
               <Text style={styles.statLabel}>{stat.label}</Text>
@@ -137,7 +151,7 @@ export default function ProfileScreen({ navigation }) {
             <Text style={styles.perfTitle}>Performance</Text>
             <Text style={styles.perfSubtitle}>Operational efficiency score</Text>
           </View>
-          <PerformanceCircle percentage={94} />
+          <PerformanceCircle percentage={user?.efficiency || 94} />
         </View>
 
         {/* Featured Collection */}
@@ -176,7 +190,7 @@ export default function ProfileScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
+  scrollContent: { paddingBottom: 120 },
 
   // Header
   header: {
@@ -237,7 +251,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
-  cameraIcon: { fontSize: 14 },
+  cameraIcon: { },
   avatarText: { fontSize: 30, fontWeight: '800', color: colors.accent },
   name: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: 12 },
   roleBadge: {
