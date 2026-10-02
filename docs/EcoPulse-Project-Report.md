@@ -769,6 +769,9 @@ When a reminder is toggled OFF:
 | 9 | Name clashes in community user database | Used phone number as unique identifier instead of name |
 | 10 | Filter pill text clipped in ScrollView | Replaced ScrollView with plain View for horizontal filter row |
 | 11 | Chat messages delayed across apps | Reduced polling intervals from 3-5 seconds to 2 seconds on all platforms |
+| 12 | `expo-av` (sound) crashes in Expo Go | Wrapped import in try/catch with graceful fallback — see 10.1.3 |
+| 13 | `expo-blur` not available after branch merge | Removed dependency, replaced with solid dark background |
+| 14 | Missing dependencies after branch merge | Packages installed on feature branch were lost when moving code to master — reinstalled individually |
 
 #### 10.1.1 Google Maps API Key — A Major Roadblock
 
@@ -808,6 +811,123 @@ This approach delivered professional-quality maps across all three applications 
 - Navigation controls
 
 **Key Takeaway:** The Google Maps dependency is a common barrier for student developers and projects in regions where international payment methods are not easily accessible. Free alternatives like OpenStreetMap and Mapbox provide comparable functionality and should be considered as primary options, not just fallbacks.
+
+#### 10.1.2 Determining Bin Fill Levels — The IoT Gap
+
+One of the most fundamental challenges in building a smart waste management system is answering a simple question: **how full is each bin?** In a fully equipped smart city, the answer comes from IoT sensors — specifically ultrasonic sensors mounted inside the bin lid that measure the distance to the waste surface and calculate fill percentage in real-time.
+
+**The Problem:**
+
+Ultrasonic sensors (such as the HC-SR04 or MaxBotix MB1010) cost approximately $15-30 per unit, excluding the microcontroller (Arduino/ESP32), GSM/LoRa module for data transmission, solar panel or battery for power, and weatherproof enclosure. For a municipality like Buea with hundreds of bins across four zones, the total hardware cost would be prohibitive:
+
+| Component | Cost per Bin | Total (100 bins) |
+|-----------|-------------|-----------------|
+| Ultrasonic sensor | $15-30 | $1,500-3,000 |
+| Microcontroller (ESP32) | $5-10 | $500-1,000 |
+| GSM/LoRa module | $10-15 | $1,000-1,500 |
+| Power (solar + battery) | $10-20 | $1,000-2,000 |
+| Enclosure + mounting | $5-10 | $500-1,000 |
+| **Total** | **$45-85** | **$4,500-8,500** |
+
+This budget was not available for the project, and sourcing these components in Cameroon adds additional import and logistics costs.
+
+**Solution: A Multi-Source Estimation Approach**
+
+Instead of hardware sensors, EcoPulse uses a **software-based estimation system** that combines three data sources to approximate bin fill levels:
+
+**1. Time-Based Estimation (Algorithmic)**
+
+The system estimates fill levels based on historical patterns and environmental factors:
+
+- **Days since last collection** — A bin collected 3 days ago with a 3-day collection cycle is estimated at ~100% capacity
+- **Collection frequency** — Bins on high-frequency routes (3x/week) fill slower per day than those on lower frequencies
+- **Zone population density** — Market zones (e.g., Great Soppo Market) generate more waste per day than residential areas (e.g., Bonduma)
+- **Day of week** — Weekend markets produce more waste; weekday university areas have different patterns
+- **Seasonal factors** — Rainy season may slow waste accumulation; holiday periods increase it
+
+Example algorithm:
+```
+estimatedFill = (daysSinceCollection / collectionCycleDays) × zoneMultiplier × 100%
+
+Where zoneMultiplier:
+  Market area = 1.3 (30% more waste)
+  University area = 1.1 (10% more waste)
+  Residential = 1.0 (baseline)
+  Town center = 1.2 (20% more waste)
+```
+
+**2. Collector Field Reports (Human Intelligence)**
+
+When collectors visit bins during their routes, they provide ground-truth data:
+
+- **GPS-verified collection** confirms the collector was physically at the bin
+- **Photo evidence** captured at collection time provides visual proof of the bin's state
+- **Fill level reset** — when a bin is marked as collected, its fill level resets to 0%
+- Over time, the system builds a historical dataset of actual fill levels per bin, which improves the algorithmic estimates
+
+**3. Community Crowdsourcing (Citizen Reports)**
+
+Community members act as distributed sensors across the city:
+
+- **Live camera photos** (no gallery uploads) show the real-time state of bins and waste piles
+- **GPS-tagged reports** pinpoint the exact location
+- **Volume of reports** for a specific location indicates urgency — multiple reports for the same bin suggest it's critically full
+- Admin can update bin status based on community reports, creating a feedback loop
+
+**Combined Approach:**
+
+| Data Source | Accuracy | Coverage | Cost | Latency |
+|------------|----------|----------|------|---------|
+| IoT Sensors | Very High | Per-bin | $45-85/bin | Real-time |
+| Time-Based Algorithm | Medium | All bins | Free | Continuous |
+| Collector Reports | High | Visited bins | Free | Per-visit |
+| Community Reports | Medium-High | Hotspots | Free | On-demand |
+
+By combining algorithmic estimation with human intelligence from collectors and community members, the system achieves reasonable accuracy at **zero hardware cost**. The algorithmic baseline provides continuous estimates for all bins, while collector visits and community reports provide periodic ground-truth corrections.
+
+**Future Enhancement:** When budget allows, IoT sensors can be added to the highest-priority bins (e.g., top 20 bins that generate the most reports) and integrated with the existing API. The `fillLevel` field in the database already supports real-time updates from any source — the transition from estimation to sensor-based data requires no architectural changes.
+
+#### 10.1.3 Sound Effects and Notification Limitations in Expo Go
+
+EcoPulse implements sound feedback for key user actions to enhance the user experience:
+
+| Action | Sound | App |
+|--------|-------|-----|
+| Report submitted successfully | Success chime | Community |
+| Chat message sent | Send whoosh | Both |
+| Chat message received from admin | Receive ping | Both |
+| Bin marked as collected | Success chime | Collector |
+
+**Implementation:** Sound effects use `expo-av` (Audio API) with local `.mp3` files stored in `src/assets/sounds/`. Each sound is loaded once and cached for replay, with volume levels calibrated per action type (success: 50%, send: 40%, receive: 30%).
+
+**The Problem:** `expo-av` requires native module access (`ExponentAV`) which is not available in all Expo Go versions. When the app runs in Expo Go and the native module is missing, importing `expo-av` directly causes a fatal crash — the entire app fails to load with `"Cannot find native module 'ExponentAV'"`.
+
+**Solution — Graceful Degradation:**
+
+All sound-related imports are wrapped in try/catch blocks:
+
+```javascript
+let Audio = null;
+try {
+  Audio = require('expo-av').Audio;
+} catch {}
+// All sound functions check if Audio exists before playing
+```
+
+This pattern ensures:
+- If `expo-av` is available → sounds play normally
+- If `expo-av` is unavailable → all sound calls silently return without affecting any other functionality
+- No impact on UI, navigation, data flow, or any other feature
+
+**Combined with notifications (Section 8.3)**, this means two UX features are coded and ready but degrade gracefully in Expo Go:
+
+| Feature | Expo Go | Development Build | Production APK |
+|---------|---------|-------------------|----------------|
+| Sound effects | Silent (no crash) | Works | Works |
+| Local notifications | Saved preference only | Works | Works |
+| Push notifications | Not available | Works | Works |
+
+**Key Takeaway:** When building with Expo Go for rapid prototyping, native-dependent features (sounds, notifications, biometrics) should always be wrapped in graceful fallbacks. The code should be written as if the feature will work, but the import and execution should never be assumed. This approach allows the same codebase to work in development (Expo Go) and production (APK) without conditional compilation or separate code paths.
 
 ### 10.2 Design Challenges
 
@@ -858,6 +978,37 @@ With seed data representing realistic Buea operations:
 | Zone-based scheduling | Achieved | 4 zones, 3 days/week each, waste type categorization |
 | Real-time communication | Achieved | Polling-based chat (4s interval) |
 | Notification system | Partially | Local notifications work; push notifications need dev build |
+| Auto zone detection | Achieved | GPS-based zone switching with manual override option |
+| Sound feedback | Partially | Coded and ready; `expo-av` requires dev build to function |
+
+---
+
+## 11.3 Deployment Considerations
+
+### 11.3.1 GPS and Location Services
+
+During development, all GPS-dependent features were tested using the **Android Studio emulator's simulated location** (Extended Controls → Location). The emulator does not use the developer's real GPS — it defaults to Google HQ in Mountain View, California and must be manually set to Buea coordinates for testing.
+
+**Features affected by emulator GPS limitations:**
+
+| Feature | Emulator Behavior | Real Device Behavior |
+|---------|-------------------|---------------------|
+| Report location | Uses manually set coordinates | Accurate GPS from device hardware |
+| Auto zone detection | Must manually move emulator location between zones | Automatically detects zone as user physically moves through Buea |
+| GPS-verified collection | Must set emulator to within 100m of bin | Natural proximity verification |
+| Navigate to bin | Opens maps app with correct destination | Provides actual turn-by-turn directions from real position |
+| Nearby bins map | Shows user at manually set location | Shows actual user position with geolocation dot |
+
+**Pre-deployment checklist for real-device GPS:**
+
+1. **Test on physical Android device** — Connect via USB, run `npx expo start`, and verify all location features with real GPS
+2. **Verify zone boundaries** — Walk through zone boundaries in Buea to confirm auto-detection thresholds are correctly calibrated (center points and radius values in `zoneDetector.js`)
+3. **Test GPS accuracy** — Verify that the 100m collection radius is appropriate for Buea's street layout; adjust if needed
+4. **Battery impact** — Monitor battery drain from `watchPositionAsync` when auto-zone is enabled; current settings use `Balanced` accuracy with 200m distance intervals to minimize drain
+5. **Permission handling** — Ensure location permission prompts appear correctly on first launch and degrade gracefully if denied
+6. **Offline GPS** — Verify that cached GPS coordinates are used when network is unavailable (GPS hardware works independently of internet)
+
+**Note:** The auto-zone detection feature defines four zones using center-point coordinates and radius values (in kilometers) based on actual bin locations in Buea. If the municipality expands or zone boundaries change, these values can be updated in `community/src/utils/zoneDetector.js` without requiring any other code changes.
 
 ---
 
