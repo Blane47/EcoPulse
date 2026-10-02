@@ -378,9 +378,15 @@ export default function ScheduleScreen({ navigation }) {
           {en ? 'UPCOMING COLLECTIONS' : 'PROCHAINES COLLECTES'}
         </Text>
 
-        {schedule.map((item, index) => {
+        {[...schedule].sort((a, b) => {
+          const dateA = getNextDateForDay(a.day, a.time);
+          const dateB = getNextDateForDay(b.day, b.time);
+          return (dateA || Infinity) - (dateB || Infinity);
+        }).map((item, index) => {
           const key = item._id || item.day;
           const isActive = index === 0;
+          const nextDate = getNextDateForDay(item.day, item.time);
+          const dateNum = nextDate ? nextDate.getDate() : '—';
           return (
             <View
               key={key}
@@ -395,7 +401,7 @@ export default function ScheduleScreen({ navigation }) {
                   {item.day?.slice(0, 3).toUpperCase()}
                 </Text>
                 <Text style={[styles.dateBoxNum, { color: colors.text }, isActive && styles.dateBoxNumActive]}>
-                  {item.dateNum || (20 + index * 3)}
+                  {dateNum}
                 </Text>
               </View>
               <View style={styles.collectionInfo}>
