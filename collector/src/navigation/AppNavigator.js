@@ -2,7 +2,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View, Text } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { useAuth } from '../context/AuthContext';
 import { colors, shadows } from '../theme';
 import { HomeIcon, RouteIcon, MapIcon, ProfileIcon } from '../components/TabIcons';
@@ -55,18 +54,12 @@ function HomeTabs() {
           </Text>
         ),
         tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="dark"
+          <View
             style={{
               position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               borderRadius: 32,
-              overflow: 'hidden',
-              backgroundColor: 'rgba(26, 26, 46, 0.75)',
+              backgroundColor: '#1a1a2e',
             }}
           />
         ),

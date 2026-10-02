@@ -5,7 +5,7 @@ import Svg, { Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
-import { CameraIcon, ArrowLeftIcon } from '../components/Icons';
+import { CameraIcon, LogoutIcon } from '../components/Icons';
 import api from '../api/axios';
 import TealHeader from '../components/TealHeader';
 
@@ -167,8 +167,8 @@ export default function ProfileScreen({ navigation }) {
                 colors={['transparent', 'rgba(0,0,0,0.6)']}
                 style={styles.featuredGradient}
               >
-                <Text style={styles.featuredTitle}>Main Market Route Clear</Text>
-                <Text style={styles.featuredMeta}>Completed 2 hours ago · Sector A-12</Text>
+                <Text style={styles.featuredTitle}>{zone} Route</Text>
+                <Text style={styles.featuredMeta}>{profileStats.bins} bins collected · {truck}</Text>
               </LinearGradient>
             </ImageBackground>
           </View>
@@ -176,12 +176,27 @@ export default function ProfileScreen({ navigation }) {
 
         {/* Contact Supervisor */}
         <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Chat')}>
-          <Text style={styles.contactText}>💬 Chat with Admin</Text>
+          <Text style={styles.contactText}>Chat with Admin</Text>
         </TouchableOpacity>
 
         {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-          <Text style={styles.logoutText}>🔓 Log Out</Text>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => {
+            Alert.alert(
+              'Sign Out',
+              'Are you sure you want to sign out?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Sign Out', style: 'destructive', onPress: logout },
+              ]
+            );
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <LogoutIcon size={18} color="#ef4444" />
+            <Text style={styles.logoutText}>Sign Out</Text>
+          </View>
         </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
