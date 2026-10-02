@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Image, ImageBackground } from 'react-native';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
+import { playSuccess } from '../utils/sounds';
 
 const { width, height } = Dimensions.get('window');
 const PIN_LENGTH = 6;
@@ -23,6 +24,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       await login(phone, pin);
+      playSuccess();
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed');
     } finally {

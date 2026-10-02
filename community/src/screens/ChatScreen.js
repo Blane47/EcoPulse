@@ -8,6 +8,7 @@ import { colors } from '../theme';
 import api from '../api/axios';
 import { ArrowLeftIcon } from '../components/Icons';
 import { ChatIcon } from '../components/TabIcons';
+import { playSend, playReceive } from '../utils/sounds';
 
 export default function ChatScreen() {
   const { profile, language } = useZone();
@@ -23,7 +24,12 @@ export default function ChatScreen() {
     if (!profile?.phone) return;
     try {
       const { data } = await api.get(`/community/chat/${profile.phone}`);
-      setMessages(data);
+      setMessages((prev) => {
+        if (data.length > prev.length && data[data.length - 1]?.senderRole !== 'community') {
+          playReceive();
+        }
+        return data;
+      });
       // Mark admin messages as read
       await api.put(`/community/chat/${profile.phone}/read`);
     } catch {
@@ -50,6 +56,7 @@ export default function ChatScreen() {
       });
       setMessages((prev) => [...prev, data]);
       setText('');
+      playSend();
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       // offline

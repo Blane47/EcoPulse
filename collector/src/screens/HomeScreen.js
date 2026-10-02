@@ -6,7 +6,7 @@ import GradientBrand from '../components/GradientBrand';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
-import { BellIcon, MapPinIcon } from '../components/Icons';
+import { BellIcon, MapPinIcon, CheckIcon, ClockIcon } from '../components/Icons';
 import api from '../api/axios';
 
 const truckBanner = require('../assets/images/truck-banner.png');
@@ -160,12 +160,12 @@ export default function HomeScreen({ navigation }) {
             {/* Stats Row */}
             <View style={styles.statsRow}>
               {[
-                { icon: '📋', label: 'ASSIGNED', value: stats.assigned, color: colors.text },
-                { icon: '✅', label: 'COLLECTED', value: stats.collected, color: colors.accent },
-                { icon: '⏳', label: 'REMAINING', value: stats.remaining, color: colors.warning },
+                { Icon: () => <MapPinIcon size={20} color={colors.text} />, label: 'ASSIGNED', value: stats.assigned, color: colors.text },
+                { Icon: () => <CheckIcon size={20} color={colors.accent} />, label: 'COLLECTED', value: stats.collected, color: colors.accent },
+                { Icon: () => <ClockIcon size={20} color={colors.warning} />, label: 'REMAINING', value: stats.remaining, color: colors.warning },
               ].map((stat) => (
                 <View key={stat.label} style={styles.statCard}>
-                  <Text style={styles.statIcon}>{stat.icon}</Text>
+                  <View style={styles.statIcon}><stat.Icon /></View>
                   <Text style={styles.statLabel}>{stat.label}</Text>
                   <Text style={[styles.statValue, { color: stat.color }]}>{stat.value}</Text>
                 </View>

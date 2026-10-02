@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
 import { ArrowLeftIcon } from '../components/Icons';
 import api from '../api/axios';
+import { playSend, playReceive } from '../utils/sounds';
 
 export default function ChatScreen({ navigation }) {
   const { user } = useAuth();
@@ -20,7 +21,12 @@ export default function ChatScreen({ navigation }) {
   const fetchMessages = useCallback(async () => {
     try {
       const { data } = await api.get(`/chat/${chatId}`);
-      setMessages(data);
+      setMessages((prev) => {
+        if (data.length > prev.length && data[data.length - 1]?.senderRole !== 'collector') {
+          playReceive();
+        }
+        return data;
+      });
       // Mark messages from admin as read
       await api.put(`/chat/${chatId}/read`).catch(() => {});
     } catch {}
@@ -47,6 +53,7 @@ export default function ChatScreen({ navigation }) {
     try {
       const { data } = await api.post('/chat', { text: trimmed });
       setMessages((prev) => [...prev, data]);
+      playSend();
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       setText(trimmed);

@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
+import { MapPinIcon, CameraIcon, CheckIcon } from '../components/Icons';
+import { playSuccess } from '../utils/sounds';
 import api from '../api/axios';
 
 export default function BinDetailScreen({ route, navigation }) {
@@ -34,6 +36,7 @@ export default function BinDetailScreen({ route, navigation }) {
     const result = await verifiedCollect(bin);
     if (result.success) {
       setBin((prev) => ({ ...prev, fillLevel: 0, status: 'optimal', lastCollected: new Date().toISOString() }));
+      playSuccess();
     }
     setCollecting(false);
   };
@@ -62,7 +65,10 @@ export default function BinDetailScreen({ route, navigation }) {
             />
             <View>
               <Text style={styles.binId}>{bin.binId}</Text>
-              <Text style={styles.location}>📍 {bin.location}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 4 }}>
+              <MapPinIcon size={12} color={colors.textSecondary} />
+              <Text style={styles.location}>{bin.location}</Text>
+            </View>
             </View>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: scBg }]}>
@@ -106,7 +112,10 @@ export default function BinDetailScreen({ route, navigation }) {
       <View style={styles.actionRow}>
         <TouchableOpacity style={styles.navigateBtn} onPress={() => navigateToBin(bin)} activeOpacity={0.8}>
           <View style={styles.navigateBtnInner}>
-            <Text style={styles.navigateBtnText}>📍 Navigate</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <MapPinIcon size={16} color={colors.accent} />
+              <Text style={styles.navigateBtnText}>Navigate</Text>
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -123,9 +132,12 @@ export default function BinDetailScreen({ route, navigation }) {
             {collecting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.collectBtnText}>
-                {isCollected ? 'Collected ✓' : '📸 Verify & Collect'}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                {isCollected ? <CheckIcon size={16} color="#fff" /> : <CameraIcon size={16} color="#fff" />}
+                <Text style={styles.collectBtnText}>
+                  {isCollected ? 'Collected' : 'Verify & Collect'}
+                </Text>
+              </View>
             )}
           </LinearGradient>
         </TouchableOpacity>

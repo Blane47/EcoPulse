@@ -7,6 +7,7 @@ import { colors } from '../theme';
 import api from '../api/axios';
 import { MapPinIcon, CameraIcon, ArrowLeftIcon, CheckIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
+import { playSuccess } from '../utils/sounds';
 
 export default function ReportBinScreen({ navigation }) {
   const { zone, language, profile } = useZone();
@@ -79,6 +80,7 @@ export default function ReportBinScreen({ navigation }) {
         photo: photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : null,
       });
       setSubmitted(true);
+      playSuccess();
     } catch {
       setSubmitted(true);
     }

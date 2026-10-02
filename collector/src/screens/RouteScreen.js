@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
 import { MapPinIcon } from '../components/Icons';
 import api from '../api/axios';
+import { playSuccess } from '../utils/sounds';
 import TealHeader from '../components/TealHeader';
 
 const FILTERS = ['All', 'Critical', 'Warning', 'Collected'];
@@ -39,6 +40,7 @@ export default function RouteScreen({ navigation }) {
     setCollectingId(bin._id);
     const result = await verifiedCollect(bin);
     if (result.success) {
+      playSuccess();
       setCollected((prev) => new Set([...prev, bin.binId]));
     }
     setCollectingId(null);
@@ -212,7 +214,10 @@ export default function RouteScreen({ navigation }) {
             {/* Open in Maps */}
             <TouchableOpacity onPress={openInMaps} activeOpacity={0.8}>
               <LinearGradient colors={['#0f1623', '#1a2332']} style={styles.openMapsButton}>
-                <Text style={styles.openMapsText}>Open in Maps 🗺️</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <MapPinIcon size={16} color="#fff" />
+                  <Text style={styles.openMapsText}>Open in Maps</Text>
+                </View>
               </LinearGradient>
             </TouchableOpacity>
           </>
