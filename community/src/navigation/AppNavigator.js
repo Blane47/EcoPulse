@@ -1,16 +1,15 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { View, Text, TextInput, Alert, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, Alert, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useZone } from '../context/ZoneContext';
 import api from '../api/axios';
 import { colors } from '../theme';
 import { HomeIcon, CalendarIcon, CollectionIcon, ChatIcon, ReportIcon, SettingsIcon } from '../components/TabIcons';
-import { MapPinIcon } from '../components/Icons';
+import { MapPinIcon, LogoutIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
 
-import { BlurView } from 'expo-blur';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ScheduleScreen from '../screens/ScheduleScreen';
@@ -18,6 +17,7 @@ import MyReportsScreen from '../screens/MyReportsScreen';
 import ReportBinScreen from '../screens/ReportBinScreen';
 import NearbyMapScreen from '../screens/NearbyMapScreen';
 import ChatScreen from '../screens/ChatScreen';
+import ApplyCollectorScreen from '../screens/ApplyCollectorScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -30,8 +30,8 @@ const tabConfig = {
   Settings: { Icon: SettingsIcon, label: 'SETTINGS' },
 };
 
-function SettingsPlaceholder() {
-  const { clearZone, language, selectLanguage, profile, saveProfile } = useZone();
+function SettingsPlaceholder({ navigation }) {
+  const { clearZone, clearProfile, language, selectLanguage, profile, saveProfile, autoZone, toggleAutoZone } = useZone();
   const en = language === 'en';
   const [name, setName] = useState(profile?.name || '');
   const [editing, setEditing] = useState(false);
@@ -122,11 +122,31 @@ function SettingsPlaceholder() {
             </Text>
           </View>
 
+          <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.cardBorder, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <MapPinIcon size={16} color={colors.text} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
+                  {en ? 'Auto-detect Zone' : 'Détection Automatique'}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 3, marginLeft: 24 }}>
+                {en ? 'Switch zones automatically based on your GPS location' : 'Change de zone automatiquement selon votre position GPS'}
+              </Text>
+            </View>
+            <Switch
+              value={autoZone}
+              onValueChange={toggleAutoZone}
+              trackColor={{ false: colors.cardBorder, true: colors.accentLight }}
+              thumbColor={autoZone ? colors.accent : '#f4f3f4'}
+            />
+          </View>
+
           <View style={{ padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <MapPinIcon size={16} color={colors.text} />
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
-                {en ? 'Change Zone' : 'Changer de Zone'}
+                {en ? 'Change Zone Manually' : 'Changer de Zone Manuellement'}
               </Text>
             </View>
             <Text
@@ -159,6 +179,65 @@ function SettingsPlaceholder() {
             Buea, Cameroon
           </Text>
         </View>
+
+        {/* Become a Collector */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ApplyCollector')}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            marginTop: 24,
+            paddingVertical: 14,
+            borderRadius: 14,
+            backgroundColor: colors.accent,
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>
+            {en ? 'Apply to Become a Collector' : 'Postuler comme Collecteur'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Sign Out */}
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert(
+              en ? 'Sign Out' : 'Déconnexion',
+              en ? 'Are you sure you want to sign out?' : 'Êtes-vous sûr de vouloir vous déconnecter?',
+              [
+                { text: en ? 'Cancel' : 'Annuler', style: 'cancel' },
+                {
+                  text: en ? 'Sign Out' : 'Déconnexion',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await clearProfile();
+                    await clearZone();
+                  },
+                },
+              ]
+            );
+          }}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            marginTop: 24,
+            paddingVertical: 14,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: '#fca5a5',
+            backgroundColor: '#fef2f2',
+          }}
+          activeOpacity={0.7}
+        >
+          <LogoutIcon size={18} color="#ef4444" />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#ef4444' }}>
+            {en ? 'Sign Out' : 'Déconnexion'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -183,8 +262,10 @@ function MainTabs() {
 
   return (
     <Tab.Navigator
+      safeAreaInsets={{ bottom: 0 }}
       screenOptions={({ route }) => ({
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarIcon: ({ focused }) => {
           const { Icon } = tabConfig[route.name] || {};
           return (
@@ -223,24 +304,16 @@ function MainTabs() {
           </Text>
         ),
         tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="dark"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderRadius: 32,
-              overflow: 'hidden',
-              backgroundColor: 'rgba(26, 26, 46, 0.75)',
-            }}
-          />
+          <View style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            borderRadius: 32,
+            backgroundColor: '#1a1a2e',
+          }} />
         ),
         tabBarStyle: {
           position: 'absolute',
-          bottom: 0,
+          bottom: 10,
           left: 20,
           right: 20,
           height: 64,
@@ -289,6 +362,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ChatFullScreen" component={ChatScreen} />
             <Stack.Screen name="ReportBin" component={ReportBinScreen} />
             <Stack.Screen name="Map" component={NearbyMapScreen} />
+            <Stack.Screen name="ApplyCollector" component={ApplyCollectorScreen} />
           </>
         ) : (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />

@@ -66,7 +66,7 @@ function formatCollectionDay(date) {
 }
 
 export default function HomeScreen({ navigation }) {
-  const { zone, clearZone, language, profile } = useZone();
+  const { zone, clearZone, language, profile, autoZone } = useZone();
   const en = language === 'en';
   const [stats, setStats] = useState({ total: 0, critical: 0, healthy: 0 });
   const [refreshing, setRefreshing] = useState(false);
@@ -193,7 +193,7 @@ export default function HomeScreen({ navigation }) {
             }}
             style={{ position: 'relative' }}
           >
-            <BellIcon size={22} color="#F59E0B" />
+            <BellIcon size={30} color="#F59E0B" />
             {hasUnread && <View style={styles.notifDot} />}
           </TouchableOpacity>
         </View>
@@ -209,7 +209,8 @@ export default function HomeScreen({ navigation }) {
         <TouchableOpacity style={styles.zonePill} onPress={clearZone}>
           <MapPinIcon size={16} color="#F59E0B" />
           <Text style={styles.zoneText}>{zone}</Text>
-          <ChevronDownIcon size={14} color={colors.textMuted} />
+          {autoZone && <Text style={{ fontSize: 9, color: '#F59E0B', fontWeight: '600' }}>AUTO</Text>}
+          <ChevronDownIcon size={14} color="rgba(255,255,255,0.4)" />
         </TouchableOpacity>
 
         {/* Next Collection Card (floating on banner) */}

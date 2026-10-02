@@ -13,7 +13,7 @@ const zones = [
 ];
 
 export default function OnboardingScreen() {
-  const { selectZone, saveProfile, language, selectLanguage } = useZone();
+  const { selectZone, saveProfile, profile, language, selectLanguage } = useZone();
   const [step, setStep] = useState(1); // 1 = zone, 2 = profile
   const [selected, setSelected] = useState(null);
   const [name, setName] = useState('');
@@ -22,7 +22,13 @@ export default function OnboardingScreen() {
   const en = language === 'en';
 
   const handleContinueToProfile = () => {
-    if (selected) setStep(2);
+    if (!selected) return;
+    // If user already has a profile, skip profile step — just select zone
+    if (profile?.name && profile?.phone) {
+      selectZone(selected);
+      return;
+    }
+    setStep(2);
   };
 
   const handleFinish = async () => {
