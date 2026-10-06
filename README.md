@@ -140,3 +140,7 @@ Known limitations and next steps:
 ## Author
 
 Built by [Blane](https://github.com/Blane47) as a final-year B.Tech project at the University of Buea, Cameroon.
+
+## License
+
+Released under the [MIT License](LICENSE).
