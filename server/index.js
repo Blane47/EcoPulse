@@ -18,6 +18,8 @@ const applicationRoutes = require('./routes/applications');
 const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/users');
 const searchRoutes = require('./routes/search');
+const leaveRoutes = require('./routes/leave');
+const { startLeaveScheduler } = require('./utils/leaveStatus');
 
 const app = express();
 
@@ -39,6 +41,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/leave', leaveRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -52,6 +55,7 @@ const PORT = process.env.PORT || 5000;
 
 const start = async () => {
   await connectDB();
+  startLeaveScheduler();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`EcoPulse server running on http://0.0.0.0:${PORT}`);
   });
