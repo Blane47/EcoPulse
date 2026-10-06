@@ -1,15 +1,23 @@
+const mongoose = require('mongoose');
 const Activity = require('../models/Activity');
 const Bin = require('../models/Bin');
 const Collector = require('../models/Collector');
 
 exports.getRecentActivity = async (req, res, next) => {
   try {
-    const { limit = 10 } = req.query;
-    const activities = await Activity.find()
+    const { collectorId } = req.query;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+    // A collector's profile asks for just their activity
+    const filter = {};
+    if (collectorId !== undefined) {
+      if (!mongoose.isValidObjectId(collectorId)) return res.status(400).json({ message: 'Invalid collector id' });
+      filter.collector = collectorId;
+    }
+    const activities = await Activity.find(filter)
       .populate('collector', 'name')
       .populate('bin', 'binId location')
       .sort({ createdAt: -1 })
-      .limit(Number(limit));
+      .limit(limit);
 
     res.json(activities);
   } catch (error) {
