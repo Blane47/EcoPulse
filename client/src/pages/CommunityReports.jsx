@@ -1,15 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { MapPin, Phone, User, Clock, Eye, CheckCircle, AlertTriangle, UserCheck, ZoomIn, ListIcon, MapIcon } from 'lucide-react';
+import { MapPin, Phone, User, Clock, Eye, CheckCircle, AlertTriangle, UserCheck, ZoomIn, ListIcon, MapIcon, Camera } from 'lucide-react';
 import api from '../api/axios';
 import { getCollectors } from '../api/collectors';
 import ReportsMap from '../components/reports/ReportsMap';
 import PhotoLightbox from '../components/reports/PhotoLightbox';
+import ProofOfCollection from '../components/reports/ProofOfCollection';
 
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: AlertTriangle },
   reviewed: { label: 'Reviewed', color: 'bg-blue-100 text-blue-700', icon: Eye },
   assigned: { label: 'Assigned', color: 'bg-violet-100 text-violet-700', icon: UserCheck },
+  // The collector sent a proof photo; an admin approves or rejects it
+  awaiting_review: { label: 'Awaiting review', color: 'bg-orange-100 text-orange-700', icon: Camera },
   collected: { label: 'Collected', color: 'bg-green-100 text-green-700', icon: CheckCircle },
 };
 
@@ -23,7 +26,8 @@ export default function CommunityReports() {
   const [assigning, setAssigning] = useState(false);
   const [actionError, setActionError] = useState('');
   const [view, setView] = useState('list');
-  const [photoOpen, setPhotoOpen] = useState(false);
+  // Photo shown in the full-screen viewer: { src, alt } or null
+  const [photoView, setPhotoView] = useState(null);
   const [deepLink, setDeepLink] = useState(null);
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -50,10 +54,11 @@ export default function CommunityReports() {
     setSelectedReport(report);
     setAssigneeId(report?.assignedCollector?._id || '');
     setActionError('');
-    setPhotoOpen(false);
+    setPhotoView(null);
   };
 
-  const closePhoto = useCallback(() => setPhotoOpen(false), []);
+  const openPhoto = (src, alt) => setPhotoView({ src, alt });
+  const closePhoto = useCallback(() => setPhotoView(null), []);
 
   // Deep link from global search (?report=<id>): once loaded, open that report. Keyed on the
   // navigation so searching for the same report again reopens it; unknown ids are ignored.
@@ -92,6 +97,12 @@ export default function CommunityReports() {
     setAssigning(false);
   };
 
+  // Reassigning or unassigning a report under review discards the collector's proof (server side)
+  const changeAssignment = (report, collectorId) => {
+    if (report.status === 'awaiting_review' && !window.confirm("This discards the collector's submitted proof. Continue?")) return;
+    assignReport(report._id, collectorId);
+  };
+
   // Collectors in the report's zone first, then the rest; inactive ones can't be picked
   const collectorOptions = (zone) =>
     [...collectors].sort((a, b) => (b.zone === zone) - (a.zone === zone) || a.name.localeCompare(b.name));
@@ -119,6 +130,7 @@ export default function CommunityReports() {
     pending: reports.filter((r) => r.status === 'pending').length,
     reviewed: reports.filter((r) => r.status === 'reviewed').length,
     assigned: reports.filter((r) => r.status === 'assigned').length,
+    awaiting_review: reports.filter((r) => r.status === 'awaiting_review').length,
     collected: reports.filter((r) => r.status === 'collected').length,
   };
 
@@ -135,15 +147,16 @@ export default function CommunityReports() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
         {[
           { label: 'Total Reports', value: counts.all, color: 'text-gray-900', bg: 'bg-gray-50' },
           { label: 'Pending', value: counts.pending, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Reviewed', value: counts.reviewed, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Assigned', value: counts.assigned, color: 'text-violet-600', bg: 'bg-violet-50' },
+          { label: 'Awaiting review', value: counts.awaiting_review, color: 'text-orange-600', bg: 'bg-orange-50' },
           { label: 'Collected', value: counts.collected, color: 'text-green-600', bg: 'bg-green-50' },
         ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} rounded-xl p-4 border border-card-border first:col-span-2 md:first:col-span-1`}>
+          <div key={stat.label} className={`${stat.bg} rounded-xl p-4 border border-card-border`}>
             <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
             <p className={`text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
           </div>
@@ -153,17 +166,17 @@ export default function CommunityReports() {
       {/* Filter Pills + List/Map toggle */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
         <div className="flex flex-wrap gap-2">
-          {['all', 'pending', 'reviewed', 'assigned', 'collected'].map((f) => (
+          {['all', 'pending', 'reviewed', 'assigned', 'awaiting_review', 'collected'].map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 filter === f
                   ? 'bg-green-500 text-white'
                   : 'bg-white text-gray-600 border border-card-border hover:bg-gray-50'
               }`}
             >
-              {f === 'all' ? 'All' : f} ({counts[f]})
+              {f === 'all' ? 'All' : statusConfig[f].label} ({counts[f]})
             </button>
           ))}
         </div>
@@ -198,7 +211,7 @@ export default function CommunityReports() {
           ) : filteredReports.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-4xl mb-3">📋</p>
-              <p className="text-gray-500">{reports.length === 0 ? 'No reports yet' : `No ${filter} reports`}</p>
+              <p className="text-gray-500">{reports.length === 0 ? 'No reports yet' : `No ${statusConfig[filter].label.toLowerCase()} reports`}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -260,23 +273,24 @@ export default function CommunityReports() {
 
         {/* Detail Panel */}
         {selectedReport && (
-          <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-5 lg:inset-auto lg:z-auto lg:overflow-visible lg:w-[380px] lg:shrink-0 lg:rounded-xl lg:border lg:border-card-border lg:h-fit lg:sticky lg:top-6">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-5 lg:inset-auto lg:z-auto lg:max-h-[calc(100vh-3rem)] lg:w-[380px] lg:shrink-0 lg:rounded-xl lg:border lg:border-card-border lg:h-fit lg:sticky lg:top-6">
             {/* Full-screen sheet below lg, side panel from lg */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-900">Report Details</h3>
               <button
                 onClick={() => selectReport(null)}
+                aria-label="Close report details"
                 className="text-gray-400 hover:text-gray-600 text-2xl lg:text-lg leading-none p-1 -m-1"
               >
                 ×
               </button>
             </div>
 
-            {/* Photo */}
-            {selectedReport.photo && (
+            {/* Photo (shown beside the collector's photo in the proof section when there is one) */}
+            {selectedReport.photo && !selectedReport.proof?.photo && (
               <button
                 type="button"
-                onClick={() => setPhotoOpen(true)}
+                onClick={() => openPhoto(selectedReport.photo, `Photo of the report at ${selectedReport.location}`)}
                 aria-label="View photo full size"
                 className="group relative block w-full mb-4 rounded-lg overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
               >
@@ -357,7 +371,7 @@ export default function CommunityReports() {
                   </span>
                   {selectedReport.status !== 'collected' && (
                     <button
-                      onClick={() => assignReport(selectedReport._id, null)}
+                      onClick={() => changeAssignment(selectedReport, null)}
                       disabled={assigning}
                       className="text-xs text-gray-500 hover:text-red-600 disabled:opacity-50"
                     >
@@ -385,7 +399,7 @@ export default function CommunityReports() {
                     ))}
                   </select>
                   <button
-                    onClick={() => assignReport(selectedReport._id, assigneeId)}
+                    onClick={() => changeAssignment(selectedReport, assigneeId)}
                     disabled={!assigneeId || assigning || assigneeId === selectedReport.assignedCollector?._id}
                     className="px-4 py-2 rounded-lg text-xs font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-40"
                   >
@@ -400,49 +414,56 @@ export default function CommunityReports() {
               )}
             </div>
 
+            <ProofOfCollection
+              key={selectedReport._id}
+              report={selectedReport}
+              formatDate={formatDate}
+              onOpenPhoto={openPhoto}
+              onReviewed={replaceReport}
+              onError={setActionError}
+            />
+
             {actionError && (
               <div className="mb-4 p-2.5 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">{actionError}</div>
             )}
 
-            {/* Status Actions */}
-            <div>
-              <p className="text-xs text-gray-400 font-medium mb-2">UPDATE STATUS</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => updateStatus(selectedReport._id, 'reviewed')}
-                  disabled={selectedReport.status === 'reviewed'}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    selectedReport.status === 'reviewed'
-                      ? 'bg-blue-100 text-blue-600'
-                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
-                  }`}
-                >
-                  Mark Reviewed
-                </button>
-                <button
-                  onClick={() => updateStatus(selectedReport._id, 'collected')}
-                  disabled={selectedReport.status === 'collected'}
-                  className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
-                    selectedReport.status === 'collected'
-                      ? 'bg-green-100 text-green-600'
-                      : 'bg-green-50 text-green-600 hover:bg-green-100'
-                  }`}
-                >
-                  Mark Collected
-                </button>
+            {/* Status Actions — a report under review is settled by approving or rejecting its proof */}
+            {selectedReport.status !== 'awaiting_review' && (
+              <div>
+                <p className="text-xs text-gray-400 font-medium mb-2">UPDATE STATUS</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateStatus(selectedReport._id, 'reviewed')}
+                    disabled={selectedReport.status !== 'pending'}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      selectedReport.status === 'reviewed'
+                        ? 'bg-blue-100 text-blue-600'
+                        : 'bg-blue-50 text-blue-600 enabled:hover:bg-blue-100 disabled:opacity-40'
+                    }`}
+                  >
+                    Mark Reviewed
+                  </button>
+                  <button
+                    onClick={() => updateStatus(selectedReport._id, 'collected')}
+                    disabled={selectedReport.status === 'collected'}
+                    className={`flex-1 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      selectedReport.status === 'collected'
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-green-50 text-green-600 hover:bg-green-100'
+                    }`}
+                  >
+                    Mark Collected
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>
 
       {/* Photo viewer — above the full-screen detail sheet */}
-      {photoOpen && selectedReport?.photo && (
-        <PhotoLightbox
-          src={selectedReport.photo}
-          alt={`Photo of the report at ${selectedReport.location}`}
-          onClose={closePhoto}
-        />
+      {photoView && selectedReport && (
+        <PhotoLightbox src={photoView.src} alt={photoView.alt} onClose={closePhoto} />
       )}
     </div>
   );

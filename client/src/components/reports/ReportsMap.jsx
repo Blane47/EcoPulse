@@ -20,6 +20,7 @@ const STATUS_STYLES = {
   pending: { label: 'Pending', hex: '#f59e0b', dot: 'bg-amber-500' },
   reviewed: { label: 'Reviewed', hex: '#3b82f6', dot: 'bg-blue-500' },
   assigned: { label: 'Assigned', hex: '#8b5cf6', dot: 'bg-violet-500' },
+  awaiting_review: { label: 'Awaiting review', hex: '#ea580c', dot: 'bg-orange-600' },
   collected: { label: 'Collected', hex: '#22c55e', dot: 'bg-green-500' },
 };
 

@@ -25,10 +25,11 @@ export default function Navbar({ onMenuClick }) {
           api.get('/chat'),
         ]);
         const critical = binsRes.data.critical + binsRes.data.warning;
-        const pending = reportsRes.data.filter(r => r.status === 'pending').length;
+        // New reports, and collectors' proof photos waiting for an admin's review
+        const reportsToHandle = reportsRes.data.filter(r => r.status === 'pending' || r.status === 'awaiting_review').length;
         const unavailable = collectorsRes.data.filter(c => c.status === 'on-leave' || c.status === 'inactive').length;
         const unreadChats = chatsRes.data.filter(c => c.unread > 0).length;
-        setNotifCount(critical + pending + unavailable + unreadChats);
+        setNotifCount(critical + reportsToHandle + unavailable + unreadChats);
       } catch {
         // ignore
       }
@@ -71,6 +72,7 @@ export default function Navbar({ onMenuClick }) {
         <div className="relative">
           <button
             onClick={() => setNotifOpen(!notifOpen)}
+            aria-label="Notifications"
             className="relative p-2 text-gray-400 hover:text-gray-600 transition-colors"
           >
             <Bell size={20} />

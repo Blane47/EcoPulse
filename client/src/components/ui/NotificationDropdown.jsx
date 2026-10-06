@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { AlertTriangle, FileText, Truck, CheckCircle, X, Clock, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { AlertTriangle, FileText, Truck, CheckCircle, X, Clock, MessageCircle, Camera } from 'lucide-react';
 import api from '../../api/axios';
 
 export default function NotificationDropdown({ isOpen, onClose }) {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const dropdownRef = useRef(null);
@@ -40,6 +42,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           title: `${bin.name || bin.binId} is critical`,
           subtitle: `${bin.fillLevel}% full — ${bin.zone || 'Unknown zone'}`,
           time: 'Now',
+          to: `/bins?q=${encodeURIComponent(bin.binId)}`,
         });
       });
 
@@ -55,11 +58,26 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           title: `${bin.name || bin.binId} nearing capacity`,
           subtitle: `${bin.fillLevel}% full — ${bin.zone || 'Unknown zone'}`,
           time: 'Recently',
+          to: `/bins?q=${encodeURIComponent(bin.binId)}`,
         });
       });
 
-      // Fetch pending reports
+      // Fetch reports: collectors' proof photos waiting for review, then new reports
       const { data: reports } = await api.get('/reports');
+      reports.filter(r => r.status === 'awaiting_review').forEach(report => {
+        items.push({
+          id: `proof-${report._id}`,
+          type: 'proof',
+          icon: Camera,
+          color: 'text-orange-500',
+          bg: 'bg-orange-50',
+          title: `Proof to review — ${report.location || report.zone || 'Unknown'}`,
+          subtitle: `Photo from ${report.assignedCollector?.name || 'the collector'}`,
+          time: formatTime(report.proof?.submittedAt || report.updatedAt),
+          to: `/community-reports?report=${report._id}`,
+        });
+      });
+
       const pendingReports = reports.filter(r => r.status === 'pending');
       pendingReports.forEach(report => {
         items.push({
@@ -71,27 +89,29 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           title: `New report: ${report.type || 'Issue'}`,
           subtitle: `${report.location || report.zone || 'Unknown'} — by ${report.reporterName || 'Anonymous'}`,
           time: formatTime(report.createdAt),
+          to: `/community-reports?report=${report._id}`,
         });
       });
 
       // Fetch collectors on leave / inactive
       const { data: collectors } = await api.get('/collectors');
-      collectors.filter(c => c.status === 'on_leave' || c.status === 'inactive').forEach(col => {
+      collectors.filter(c => c.status === 'on-leave' || c.status === 'inactive').forEach(col => {
         items.push({
           id: `col-${col._id}`,
           type: 'collector',
           icon: Truck,
           color: col.status === 'inactive' ? 'text-gray-500' : 'text-yellow-500',
           bg: col.status === 'inactive' ? 'bg-gray-50' : 'bg-yellow-50',
-          title: `${col.name} is ${col.status === 'on_leave' ? 'on leave' : 'inactive'}`,
+          title: `${col.name} is ${col.status === 'on-leave' ? 'on leave' : 'inactive'}`,
           subtitle: `${col.zone || 'Unassigned'} zone`,
           time: 'Today',
+          to: `/collectors/${col._id}`,
         });
       });
 
       // Fetch unread chat messages
       const { data: chats } = await api.get('/chat');
-      chats.filter(c => c.unreadCount > 0).forEach(chat => {
+      chats.filter(c => c.unread > 0).forEach(chat => {
         items.push({
           id: `chat-${chat._id}`,
           type: 'chat',
@@ -99,8 +119,9 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           color: 'text-green-500',
           bg: 'bg-green-50',
           title: `New message from ${chat.participantName || 'User'}`,
-          subtitle: `${chat.unreadCount} unread message${chat.unreadCount > 1 ? 's' : ''}`,
+          subtitle: `${chat.unread} unread message${chat.unread > 1 ? 's' : ''}`,
           time: formatTime(chat.lastMessageAt || chat.updatedAt),
+          to: '/chat',
         });
       });
 
@@ -137,7 +158,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
               {notifications.length}
             </span>
           )}
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} aria-label="Close notifications" className="text-gray-400 hover:text-gray-600">
             <X size={16} />
           </button>
         </div>
@@ -156,9 +177,11 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           </div>
         ) : (
           notifications.map((notif) => (
-            <div
+            <button
               key={notif.id}
-              className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 cursor-pointer"
+              type="button"
+              onClick={() => { navigate(notif.to); onClose(); }}
+              className="w-full text-left flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 cursor-pointer"
             >
               <div className={`p-2 rounded-lg ${notif.bg} mt-0.5`}>
                 <notif.icon size={16} className={notif.color} />
@@ -171,7 +194,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
                 <Clock size={10} />
                 {notif.time}
               </div>
-            </div>
+            </button>
           ))
         )}
       </div>
