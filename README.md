@@ -28,8 +28,8 @@ flowchart LR
 **Admin dashboard**
 - Live map of every bin in Buea, coloured by fill status (OpenStreetMap + Leaflet)
 - Community reports with photo, GPS location and note; **assign a report to a collector** (collectors in the report's zone are suggested first), reassign or unassign
-- Collector management: create accounts with a login PIN, assign zones, view performance
-- Review residents' applications to become collectors, and create the account in one step
+- Collector management: create accounts with an email and a temporary password, reset forgotten passwords, assign zones, view performance
+- Review residents' applications to become collectors (they give the email they'll sign in with), and create the account in one step
 - Chat with collectors and residents; zone-wide announcements
 - Works on desktop, tablet and phone (sidebar becomes a slide-out menu below 1024px)
 
@@ -60,7 +60,7 @@ flowchart LR
 Residents sign up with just a name and phone number, without a password, so the access model is designed around that:
 
 - **Residents are tied to the phone that registered their number.** The server issues a random device token on first registration and stores only its SHA-256 hash. Chat and report endpoints require the token, so knowing someone's phone number isn't enough to read their conversation or report in their name. If a resident changes phones, an admin can move the number from the dashboard.
-- **Collector PINs are hashed with bcrypt** and never returned by the API.
+- **Collectors sign in with email and password.** Passwords are hashed with bcrypt and never returned by the API. New accounts and admin resets get a one-time temporary password, and the Collector app makes the collector choose their own before going any further.
 - **Role checks on every route**: collectors can only read and post in their own chat and can only close reports assigned to them; resident submissions can't set a report's status or assignee.
 - **Phone numbers are normalised** to `+237XXXXXXXXX` before they're stored or looked up, so `670 000 001`, `237670000001` and `+237 670 000 001` are the same person.
 
@@ -108,18 +108,20 @@ These exist only in a freshly seeded local database:
 | App | Login |
 |---|---|
 | Admin dashboard | `admin@ecopulse.cm` / `admin123` |
-| Collector app | phone `670000001`, PIN `123456` |
+| Collector app | `emmanuel@ecopulse.cm` / `collector123` (also `samuel@`, `francis@`, `amadou@`, `kevin@`, `abiba@`) |
 | Resident app | no login — enter a name and any phone number |
 
 ### Upgrading an existing database
 
-Databases created by older versions need a one-off migration (phone numbers, PIN hashing, bin statuses; dry run by default):
+Databases created by older versions need a one-off migration (phone numbers, old collector PINs, bin statuses; dry run by default):
 
 ```bash
 cd server
 node scripts/migrate.js           # shows what would change
 node scripts/migrate.js --apply   # writes it
 ```
+
+Collectors used to sign in with phone + PIN. The migration removes the old PINs and lists collectors who have no email yet: open each one in the dashboard, add their email, then use **Reset password** to give them a temporary password.
 
 ## Project status
 
