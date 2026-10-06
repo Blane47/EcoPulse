@@ -73,7 +73,7 @@ export default function Collectors() {
                 )}
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">{collector.name}</h3>
-                  <p className="text-xs text-gray-500">{collector.truck}</p>
+                  <p className={`text-xs ${collector.truck ? 'text-gray-500' : 'text-gray-400 italic'}`}>{collector.truck || 'No truck'}</p>
                 </div>
               </div>
               <Badge variant={collector.status === 'active' ? 'success' : collector.status === 'inactive' ? 'danger' : 'warning'}>

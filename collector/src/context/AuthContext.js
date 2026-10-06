@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/axios';
 
 const AuthContext = createContext();
+// Profile fields refreshed from the server on launch
+const SYNCED_FIELDS = ['name', 'email', 'status', 'zone', 'truck', 'mustChangePassword'];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -35,13 +37,9 @@ export function AuthProvider({ children }) {
             await AsyncStorage.multiRemove(['collector_token', 'collector_user']);
             setToken(null);
             setUser(null);
-          } else if (
-            data.status !== localUser.status ||
-            data.zone !== localUser.zone ||
-            data.mustChangePassword !== localUser.mustChangePassword
-          ) {
-            // mustChangePassword flips when an admin issues a temporary password
-            const synced = { ...localUser, status: data.status, zone: data.zone, mustChangePassword: data.mustChangePassword };
+          } else if (SYNCED_FIELDS.some((k) => data[k] !== localUser[k])) {
+            // Admins change these from the dashboard; mustChangePassword flips when they issue a temporary password
+            const synced = { ...localUser, ...Object.fromEntries(SYNCED_FIELDS.map((k) => [k, data[k]])) };
             setUser(synced);
             await AsyncStorage.setItem('collector_user', JSON.stringify(synced));
           }

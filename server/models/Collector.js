@@ -16,7 +16,7 @@ const collectorSchema = new mongoose.Schema({
   // Legacy PIN hash from the old phone + PIN sign-in; never selected, removed by scripts/migrate.js
   pin: { type: String, select: false },
   phone: { type: String, unique: true, sparse: true },
-  truck: { type: String, default: '' },
+  truck: { type: String, default: '', trim: true },
   zone: { type: String, required: true, enum: ['Molyko', 'Great Soppo', 'Bonduma', 'Buea Town'] },
   role: { type: String, enum: ['field_collector', 'zone_supervisor'], default: 'field_collector' },
   status: { type: String, enum: ['active', 'on-leave', 'inactive'], default: 'active' },

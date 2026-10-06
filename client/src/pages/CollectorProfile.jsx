@@ -5,6 +5,7 @@ import { getCollectorById, updateCollector, resetCollectorPassword } from '../ap
 import api from '../api/axios';
 import Badge from '../components/ui/Badge';
 import AssignZoneModal from '../components/ui/AssignZoneModal';
+import AssignTruckModal from '../components/ui/AssignTruckModal';
 
 export default function CollectorProfile() {
   const { id } = useParams();
@@ -13,6 +14,7 @@ export default function CollectorProfile() {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAssignZone, setShowAssignZone] = useState(false);
+  const [showAssignTruck, setShowAssignTruck] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [resettingPassword, setResettingPassword] = useState(false);
@@ -188,6 +190,13 @@ export default function CollectorProfile() {
                 Assign Zone
               </button>
               <button
+                onClick={() => setShowAssignTruck(true)}
+                className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition-colors border border-white/20"
+              >
+                <Truck size={14} className="inline mr-1.5 -mt-0.5" />
+                Assign Truck
+              </button>
+              <button
                 onClick={handleResetPassword}
                 disabled={resettingPassword}
                 className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition-colors border border-white/20 disabled:opacity-50"
@@ -338,9 +347,14 @@ export default function CollectorProfile() {
                 <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center">
                   <Truck size={18} className="text-amber-500" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[10px] text-gray-400 uppercase font-medium">Truck</p>
-                  <p className="text-sm font-semibold text-gray-900">{collector.truck || 'Not assigned'}</p>
+                  <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+                    <p className={`text-sm font-semibold ${collector.truck ? 'text-gray-900' : 'text-gray-400'}`}>{collector.truck || 'Not assigned'}</p>
+                    <button onClick={() => setShowAssignTruck(true)} className="text-xs font-medium text-accent hover:underline">
+                      {collector.truck ? 'Change' : 'Assign'}
+                    </button>
+                  </div>
                 </div>
               </div>
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
@@ -463,6 +477,9 @@ export default function CollectorProfile() {
         collector={collector}
         onUpdated={() => { setShowAssignZone(false); fetchData(); }}
       />
+      {showAssignTruck && (
+        <AssignTruckModal onClose={() => setShowAssignTruck(false)} collector={collector} onUpdated={fetchData} />
+      )}
     </div>
   );
 }
