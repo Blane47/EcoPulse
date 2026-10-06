@@ -56,7 +56,11 @@ exports.updateCollector = async (req, res, next) => {
   try {
     // findByIdAndUpdate skips document hooks, so normalise here
     const updates = pick(req.body);
-    if (updates.phone !== undefined && updates.phone !== '') {
+    if (updates.phone === null || (typeof updates.phone === 'string' && !updates.phone.trim())) {
+      // Clearing the phone: unset it rather than store '', which the sparse unique index counts
+      delete updates.phone;
+      updates.$unset = { phone: 1 };
+    } else if (updates.phone !== undefined) {
       const phone = normalizePhone(updates.phone);
       if (!phone) return res.status(400).json({ message: 'Enter a valid phone number' });
       updates.phone = phone;

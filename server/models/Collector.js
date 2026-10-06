@@ -38,6 +38,8 @@ const collectorSchema = new mongoose.Schema({
 });
 
 collectorSchema.pre('validate', function () {
+  // Phone is optional; store a blank one as missing, since the sparse unique index still counts ''
+  if (typeof this.phone === 'string' && !this.phone.trim()) this.phone = undefined;
   if (this.isModified('phone') && this.phone) {
     const phone = normalizePhone(this.phone);
     if (phone) this.phone = phone;
