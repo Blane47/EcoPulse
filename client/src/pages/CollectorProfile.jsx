@@ -147,13 +147,13 @@ export default function CollectorProfile() {
       </div>
 
       {/* Content Grid */}
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column — Info + Stats */}
-        <div className="col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-6 min-w-0">
           {/* Contact & Assignment Info */}
           <div className="bg-white rounded-xl border border-card-border p-6">
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Contact & Assignment</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
                   <Phone size={18} className="text-blue-500" />
@@ -196,7 +196,7 @@ export default function CollectorProfile() {
           {/* Performance Stats */}
           <div className="bg-white rounded-xl border border-card-border p-6">
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Performance Metrics</h2>
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
               <div className="text-center p-5 bg-gray-50 rounded-xl">
                 <p className="text-3xl font-black text-gray-900">{collector.binsAssigned}</p>
                 <p className="text-xs text-gray-400 mt-2">Bins Assigned</p>

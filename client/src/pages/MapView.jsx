@@ -1,10 +1,22 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import Badge from '../components/ui/Badge';
 import { getBins } from '../api/bins';
 import { zoneOverview } from '../data/mockData';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+
+// Leaflet measures its container once; re-measure whenever the container resizes
+// (responsive layout settling, phone rotation) so tiles fill the whole map
+function InvalidateOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(map.getContainer());
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
 
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -50,11 +62,12 @@ export default function MapView() {
   };
 
   return (
-    <div style={{ display: 'flex', margin: '-24px', height: 'calc(100vh - 64px)' }}>
+    // Bleeds to the edges of <main> (cancelling its p-4 / sm:p-6); map above the zone panel on phones, side by side from md
+    <div className="flex flex-col md:flex-row -m-4 sm:-m-6 md:h-[calc(100vh-64px)]">
       {/* Map Area */}
-      <div style={{ flex: 1, position: 'relative' }}>
+      <div className="relative h-[60vh] md:h-auto md:flex-1 min-w-0">
         {/* Filter Pills — positioned below zoom controls */}
-        <div style={{ position: 'absolute', top: 12, left: 60, zIndex: 1000, display: 'flex', gap: 8 }}>
+        <div style={{ position: 'absolute', top: 12, left: 60, right: 12, zIndex: 1000, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {[
             { key: 'all', label: 'All Bins' },
             { key: 'critical', label: 'Critical' },
@@ -81,6 +94,7 @@ export default function MapView() {
         </div>
 
         <MapContainer center={BUEA_CENTER} zoom={13} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+          <InvalidateOnResize />
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -115,7 +129,7 @@ export default function MapView() {
       </div>
 
       {/* Zone Overview Panel */}
-      <div style={{ width: 300, backgroundColor: '#fff', borderLeft: '1px solid #e5e7eb', padding: 20, overflowY: 'auto' }}>
+      <div className="bg-white border-t md:border-t-0 md:border-l border-gray-200 p-5 md:w-[300px] md:shrink-0 md:overflow-y-auto">
         <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Zone Overview</h2>
         <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>Real-time municipality health</p>
 

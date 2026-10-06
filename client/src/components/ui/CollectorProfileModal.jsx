@@ -46,7 +46,7 @@ export default function CollectorProfileModal({ isOpen, onClose, collectorId }) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div
         className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
@@ -126,7 +126,7 @@ export default function CollectorProfileModal({ isOpen, onClose, collectorId }) 
 
               {/* Performance Stats */}
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Performance</h3>
-              <div className="grid grid-cols-4 gap-3 mb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                 <div className="text-center p-3 bg-gray-50 rounded-xl">
                   <p className="text-2xl font-bold text-gray-900">{collector.binsAssigned}</p>
                   <p className="text-[10px] text-gray-400 mt-1">Bins Assigned</p>

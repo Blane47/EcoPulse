@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, Menu } from 'lucide-react';
 import NotificationDropdown from '../ui/NotificationDropdown';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 
-export default function Navbar() {
+export default function Navbar({ onMenuClick }) {
+  const { user } = useAuth();
+  const initials = user?.name
+    ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : 'U';
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
 
@@ -18,8 +23,8 @@ export default function Navbar() {
         ]);
         const critical = binsRes.data.filter(b => b.status === 'critical' || b.status === 'warning').length;
         const pending = reportsRes.data.filter(r => r.status === 'pending').length;
-        const unavailable = collectorsRes.data.filter(c => c.status === 'on_leave' || c.status === 'inactive').length;
-        const unreadChats = chatsRes.data.filter(c => c.unreadCount > 0).length;
+        const unavailable = collectorsRes.data.filter(c => c.status === 'on-leave' || c.status === 'inactive').length;
+        const unreadChats = chatsRes.data.filter(c => c.unread > 0).length;
         setNotifCount(critical + pending + unavailable + unreadChats);
       } catch {
         // ignore
@@ -31,9 +36,17 @@ export default function Navbar() {
   }, []);
 
   return (
-    <header className="h-16 bg-white border-b border-card-border flex items-center justify-between px-6">
+    <header className="h-16 bg-white border-b border-card-border flex items-center justify-between gap-3 px-4 sm:px-6 sticky top-0 z-30 lg:static">
+      {/* Menu button + brand (drawer mode only) */}
+      <div className="flex items-center gap-3 lg:hidden">
+        <button onClick={onMenuClick} className="p-1.5 -ml-1.5 text-gray-600 hover:text-gray-900" aria-label="Open menu">
+          <Menu size={22} />
+        </button>
+        <span className="font-bold text-gray-900 md:hidden">EcoPulse</span>
+      </div>
+
       {/* Search */}
-      <div className="relative w-80">
+      <div className="relative w-80 hidden md:block">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
         <input
           type="text"
@@ -43,7 +56,7 @@ export default function Navbar() {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
         <div className="relative">
           <button
             onClick={() => setNotifOpen(!notifOpen)}
@@ -60,9 +73,9 @@ export default function Navbar() {
         </div>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center">
-            <span className="text-accent text-xs font-semibold">AR</span>
+            <span className="text-accent text-xs font-semibold">{initials}</span>
           </div>
-          <span className="text-sm font-medium text-gray-700">Alex Rivera</span>
+          <span className="hidden sm:inline text-sm font-medium text-gray-700">{user?.name || 'User'}</span>
         </div>
       </div>
     </header>

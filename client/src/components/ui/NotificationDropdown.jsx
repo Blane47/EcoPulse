@@ -127,7 +127,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div ref={dropdownRef} className="absolute right-0 top-12 w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
+    <div ref={dropdownRef} className="fixed left-4 right-4 top-16 sm:absolute sm:left-auto sm:right-0 sm:top-12 sm:w-96 bg-white rounded-xl shadow-xl border border-gray-200 z-50 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <h3 className="text-sm font-semibold text-gray-800">Notifications</h3>

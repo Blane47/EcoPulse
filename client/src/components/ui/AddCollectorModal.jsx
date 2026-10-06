@@ -51,10 +51,10 @@ export default function AddCollectorModal({ isOpen, onClose, onCollectorAdded })
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={close} />
 
-      <div className="relative bg-white rounded-2xl w-full max-w-[480px] shadow-2xl">
+      <div className="relative bg-white rounded-2xl w-full max-w-[480px] max-h-[90vh] overflow-y-auto shadow-2xl">
         {created ? (
           <div className="p-6">
             <h2 className="text-lg font-bold text-gray-900">Collector added</h2>

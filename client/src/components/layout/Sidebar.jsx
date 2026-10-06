@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -8,6 +9,7 @@ import {
   MessageSquare,
   Settings,
   LogOut,
+  X,
   Megaphone,
   UserPlus,
 } from 'lucide-react';
@@ -25,8 +27,17 @@ const navItems = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 
-export default function Sidebar() {
+// Fixed on desktop (lg+); below that a drawer controlled by Layout via open/onClose
+export default function Sidebar({ open, onClose }) {
   const { user, onLogout } = useAuth();
+
+  // Escape closes the drawer
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => e.key === 'Escape' && onClose();
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
 
   const initials = user?.name
     ? user.name.split(' ').map((n) => n[0]).join('').toUpperCase()
@@ -39,7 +50,13 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-[220px] bg-sidebar flex flex-col z-50">
+    <>
+    {open && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} aria-hidden="true" />}
+    <aside
+      className={`fixed left-0 top-0 h-screen w-[220px] bg-sidebar flex flex-col z-50 transition-transform duration-200 lg:translate-x-0 ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       {/* Logo */}
       <div className="px-5 py-7">
         <div className="flex items-center gap-3">
@@ -48,16 +65,20 @@ export default function Sidebar() {
             <h1 className="text-white font-bold text-lg leading-tight">EcoPulse</h1>
             <p className="text-gray-500 text-[10px] uppercase tracking-wider">City Management</p>
           </div>
+          <button onClick={onClose} className="ml-auto text-gray-500 hover:text-white lg:hidden" aria-label="Close menu">
+            <X size={20} />
+          </button>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 mt-4 space-y-2">
+      <nav className="flex-1 px-3 mt-4 space-y-2 overflow-y-auto">
         {navItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to === '/'}
+            onClick={onClose}
             className={({ isActive }) =>
               `flex items-center gap-3 px-4 py-3.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
@@ -92,5 +113,6 @@ export default function Sidebar() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

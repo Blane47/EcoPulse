@@ -49,7 +49,7 @@ export default function Bins({ onAddBin }) {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Waste Collection Points</h1>
           <p className="text-sm text-gray-500">Monitoring real-time fill levels and status across municipal zones.</p>
@@ -63,7 +63,7 @@ export default function Bins({ onAddBin }) {
         </button>
       </div>
 
-      <div className="flex items-center gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 mb-4">
         <select value={zoneFilter} onChange={(e) => { setZoneFilter(e.target.value); setCurrentPage(1); }} className="px-3 py-2 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30">
           <option value="">All Zones</option>
           {zones.map((z) => <option key={z} value={z}>{z}</option>)}
@@ -86,8 +86,8 @@ export default function Bins({ onAddBin }) {
         </button>
       </div>
 
-      <div className="bg-white rounded-card border border-card-border overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-card border border-card-border overflow-x-auto">
+        <table className="w-full min-w-[680px] text-sm">
           <thead>
             <tr className="border-b border-card-border bg-gray-50/50">
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase">Bin ID</th>

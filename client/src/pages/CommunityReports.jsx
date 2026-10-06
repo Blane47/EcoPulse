@@ -97,7 +97,7 @@ export default function CommunityReports() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Community Reports</h1>
           <p className="text-sm text-gray-500">View and manage waste reports submitted by community members</p>
@@ -113,7 +113,7 @@ export default function CommunityReports() {
           { label: 'Assigned', value: counts.assigned, color: 'text-violet-600', bg: 'bg-violet-50' },
           { label: 'Collected', value: counts.collected, color: 'text-green-600', bg: 'bg-green-50' },
         ].map((stat) => (
-          <div key={stat.label} className={`${stat.bg} rounded-xl p-4 border border-card-border`}>
+          <div key={stat.label} className={`${stat.bg} rounded-xl p-4 border border-card-border first:col-span-2 md:first:col-span-1`}>
             <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
             <p className={`text-2xl font-bold ${stat.color} mt-1`}>{stat.value}</p>
           </div>
@@ -140,7 +140,7 @@ export default function CommunityReports() {
       {/* Content */}
       <div className="flex gap-4">
         {/* Reports List */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {loading ? (
             <div className="text-center py-20 text-gray-400">Loading reports...</div>
           ) : reports.length === 0 ? (
@@ -165,13 +165,13 @@ export default function CommunityReports() {
                         isSelected ? 'border-green-500 shadow-md' : 'border-card-border'
                       }`}
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <MapPin size={14} className="text-gray-400" />
                             <span className="text-sm font-semibold text-gray-900">{report.location}</span>
                           </div>
-                          <div className="flex items-center gap-4 text-xs text-gray-400">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
                             <span className="flex items-center gap-1">
                               <Clock size={12} />
                               {formatDate(report.createdAt)}
@@ -208,12 +208,13 @@ export default function CommunityReports() {
 
         {/* Detail Panel */}
         {selectedReport && (
-          <div className="w-[380px] bg-white rounded-xl border border-card-border p-5 h-fit sticky top-6">
+          <div className="fixed inset-0 z-50 overflow-y-auto bg-white p-5 lg:inset-auto lg:z-auto lg:overflow-visible lg:w-[380px] lg:shrink-0 lg:rounded-xl lg:border lg:border-card-border lg:h-fit lg:sticky lg:top-6">
+            {/* Full-screen sheet below lg, side panel from lg */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-gray-900">Report Details</h3>
               <button
                 onClick={() => selectReport(null)}
-                className="text-gray-400 hover:text-gray-600 text-lg"
+                className="text-gray-400 hover:text-gray-600 text-2xl lg:text-lg leading-none p-1 -m-1"
               >
                 ×
               </button>
@@ -329,9 +330,11 @@ export default function CommunityReports() {
                   </button>
                 </div>
               )}
-              <p className="text-[11px] text-gray-400 mt-1.5">
-                ✓ = works in {selectedReport.zone}. The collector is notified in the EcoPulse Collector app.
-              </p>
+              {selectedReport.status !== 'collected' && (
+                <p className="text-[11px] text-gray-400 mt-1.5">
+                  ✓ = works in {selectedReport.zone}. The collector is notified in the EcoPulse Collector app.
+                </p>
+              )}
             </div>
 
             {actionError && (

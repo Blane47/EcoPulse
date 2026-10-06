@@ -33,7 +33,7 @@ export default function Collectors() {
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Collectors</h1>
           <p className="text-sm text-gray-500">Manage field teams and zone assignments for Buea Municipality</p>
