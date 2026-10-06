@@ -13,7 +13,7 @@ if (ExpoAudio) {
 
 const SOUND_FILES = {
   success: require('../assets/sounds/success.mp3'),
-  send: require('../assets/sounds/send.mp3'),
+  send: require('../assets/sounds/send.wav'),
   receive: require('../assets/sounds/receive.mp3'),
 };
 
