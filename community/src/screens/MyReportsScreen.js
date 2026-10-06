@@ -30,7 +30,7 @@ export default function MyReportsScreen({ navigation, route }) {
   const fetchReports = useCallback(async () => {
     try {
       if (profile?.phone) {
-        const { data } = await api.get(`/reports/user/${profile.phone}`);
+        const { data } = await api.get('/reports/mine');
         setReports(data);
       }
     } catch {
@@ -59,6 +59,7 @@ export default function MyReportsScreen({ navigation, route }) {
   const statusConfig = {
     pending: { label: en ? 'Pending' : 'En attente', color: colors.warning },
     reviewed: { label: en ? 'Under Review' : 'En cours', color: '#3b82f6' },
+    assigned: { label: en ? 'Collector Assigned' : 'Collecteur Assigné', color: '#8b5cf6' },
     collected: { label: en ? 'Collected' : 'Collecté', color: colors.accent },
   };
 

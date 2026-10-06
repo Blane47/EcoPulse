@@ -10,7 +10,7 @@ import TealHeader from '../components/TealHeader';
 import { playSuccess } from '../utils/sounds';
 
 export default function ReportBinScreen({ navigation }) {
-  const { zone, language, profile } = useZone();
+  const { zone, language } = useZone();
   const en = language === 'en';
   const [description, setDescription] = useState('');
   const [note, setNote] = useState('');
@@ -69,20 +69,24 @@ export default function ReportBinScreen({ navigation }) {
     }
     setSubmitting(true);
     try {
+      // Reporter name and phone come from this device's registration on the server
       await api.post('/reports', {
         location: description || (en ? 'Waste pile report' : 'Signalement de déchets'),
         note,
         coordinates: coords,
         zone,
-        deviceId: profile?.phone || 'anonymous',
-        reporterName: profile?.name || null,
-        reporterPhone: profile?.phone || null,
         photo: photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : null,
       });
       setSubmitted(true);
       playSuccess();
-    } catch {
-      setSubmitted(true);
+    } catch (err) {
+      // Keep the form (photo, note, location) so the resident can retry
+      Alert.alert(
+        en ? 'Report not sent' : 'Signalement non envoyé',
+        err.response
+          ? (en ? 'EcoPulse could not accept your report. Please try again.' : 'EcoPulse n\'a pas pu accepter votre signalement. Veuillez réessayer.')
+          : (en ? 'No internet connection. Your report was not sent — check your connection and tap Submit again.' : 'Pas de connexion internet. Votre signalement n\'a pas été envoyé — vérifiez votre connexion et appuyez à nouveau sur Envoyer.')
+      );
     }
     setSubmitting(false);
   };

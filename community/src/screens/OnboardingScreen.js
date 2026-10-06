@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView, Alert,
 import { LinearGradient } from 'expo-linear-gradient';
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
-import api from '../api/axios';
+import { normalizePhone } from '../utils/phone';
 
 const zones = [
   { name: 'Molyko', icon: '🎓', en: 'University area', fr: 'Zone universitaire' },
@@ -13,7 +13,7 @@ const zones = [
 ];
 
 export default function OnboardingScreen() {
-  const { selectZone, saveProfile, profile, language, selectLanguage } = useZone();
+  const { selectZone, registerProfile, profile, language, selectLanguage } = useZone();
   const [step, setStep] = useState(1); // 1 = zone, 2 = profile
   const [selected, setSelected] = useState(null);
   const [name, setName] = useState('');
@@ -36,24 +36,17 @@ export default function OnboardingScreen() {
       Alert.alert(en ? 'Name required' : 'Nom requis');
       return;
     }
-    if (!phone.trim() || phone.trim().length < 6) {
-      Alert.alert(en ? 'Valid phone number required' : 'Numéro de téléphone valide requis');
+    if (!normalizePhone(phone)) {
+      Alert.alert(
+        en ? 'Valid phone number required' : 'Numéro de téléphone valide requis',
+        en ? 'Enter your 9-digit number, e.g. 670 000 001.' : 'Entrez votre numéro à 9 chiffres, ex. 670 000 001.'
+      );
       return;
     }
 
     setLoading(true);
     try {
-      const { data } = await api.post('/community/auth', {
-        name: name.trim(),
-        phone: phone.trim(),
-        zone: selected,
-      });
-
-      await saveProfile({
-        _id: data.user._id,
-        name: data.user.name,
-        phone: data.user.phone,
-      });
+      const data = await registerProfile({ name: name.trim(), phone, zone: selected });
 
       if (data.returning) {
         Alert.alert(
@@ -64,9 +57,21 @@ export default function OnboardingScreen() {
 
       await selectZone(selected);
     } catch (err) {
-      // Offline fallback — save locally
-      await saveProfile({ name: name.trim(), phone: phone.trim() });
-      await selectZone(selected);
+      if (err.response?.data?.code === 'PHONE_CLAIMED') {
+        Alert.alert(
+          en ? 'Number already registered' : 'Numéro déjà enregistré',
+          en
+            ? 'This number is already registered on another phone. Contact the municipality to move it to this phone.'
+            : 'Ce numéro est déjà enregistré sur un autre téléphone. Contactez la mairie pour le transférer sur ce téléphone.'
+        );
+      } else if (err.response) {
+        Alert.alert(en ? 'Could not register' : 'Inscription impossible', err.response.data?.message || '');
+      } else {
+        Alert.alert(
+          en ? 'No connection' : 'Pas de connexion',
+          en ? 'Could not reach EcoPulse. Check your internet connection and try again.' : 'Impossible de joindre EcoPulse. Vérifiez votre connexion internet et réessayez.'
+        );
+      }
     }
     setLoading(false);
   };

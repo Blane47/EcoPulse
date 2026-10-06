@@ -31,18 +31,25 @@ const tabConfig = {
 };
 
 function SettingsPlaceholder({ navigation }) {
-  const { clearZone, clearProfile, language, selectLanguage, profile, saveProfile, autoZone, toggleAutoZone } = useZone();
+  const { clearZone, clearProfile, language, selectLanguage, profile, registerProfile, autoZone, toggleAutoZone } = useZone();
   const en = language === 'en';
   const [name, setName] = useState(profile?.name || '');
   const [editing, setEditing] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert(en ? 'Name required' : 'Nom requis');
       return;
     }
-    saveProfile({ ...profile, name: name.trim() });
-    setEditing(false);
+    try {
+      await registerProfile({ name: name.trim(), phone: profile.phone });
+      setEditing(false);
+    } catch {
+      Alert.alert(
+        en ? 'Could not save' : 'Enregistrement impossible',
+        en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'
+      );
+    }
   };
 
   return (
@@ -251,7 +258,7 @@ function MainTabs() {
     if (!profile?.phone) return;
     const check = async () => {
       try {
-        const { data } = await api.get(`/community/chat/${profile.phone}/unread`);
+        const { data } = await api.get('/community/chat/unread');
         setUnreadChat(data.unread > 0);
       } catch {}
     };

@@ -146,9 +146,9 @@ export default function HomeScreen({ navigation }) {
         // Check report updates
         if (!hasNew && profile?.phone) {
           try {
-            const { data: reports } = await api.get(`/reports/user/${profile.phone}`);
+            const { data: reports } = await api.get('/reports/mine');
             hasNew = reports.some(r =>
-              (r.status === 'reviewed' || r.status === 'collected') &&
+              r.status !== 'pending' &&
               new Date(r.updatedAt).getTime() > lastTime
             );
           } catch {}

@@ -23,7 +23,7 @@ export default function ChatScreen() {
   const fetchMessages = async () => {
     if (!profile?.phone) return;
     try {
-      const { data } = await api.get(`/community/chat/${profile.phone}`);
+      const { data } = await api.get('/community/chat');
       setMessages((prev) => {
         if (data.length > prev.length && data[data.length - 1]?.senderRole !== 'community') {
           playReceive();
@@ -31,7 +31,7 @@ export default function ChatScreen() {
         return data;
       });
       // Mark admin messages as read
-      await api.put(`/community/chat/${profile.phone}/read`);
+      await api.put('/community/chat/read');
     } catch {
       // offline
     }
@@ -49,11 +49,7 @@ export default function ChatScreen() {
     if (!text.trim() || sending) return;
     setSending(true);
     try {
-      const { data } = await api.post('/community/chat', {
-        phone: profile.phone,
-        name: profile.name,
-        text: text.trim(),
-      });
+      const { data } = await api.post('/community/chat', { text: text.trim() });
       setMessages((prev) => [...prev, data]);
       setText('');
       playSend();
