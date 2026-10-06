@@ -38,7 +38,8 @@ export default function HomeScreen({ navigation }) {
           .sort((a, b) => b.fillLevel - a.fillLevel)
           .slice(0, 5)
       );
-      setAssignedReports(reports.filter((r) => r.status === 'assigned'));
+      // Open work plus proofs waiting for the admin, so collectors can see what they've sent
+      setAssignedReports(reports.filter((r) => r.status === 'assigned' || r.status === 'awaiting_review'));
       setLoadError(false);
     } catch {
       setLoadError(true);
@@ -234,7 +235,7 @@ export default function HomeScreen({ navigation }) {
                   <View style={styles.sectionTitleRow}>
                     <Text style={styles.sectionTitle}>{en ? 'Assigned Reports' : 'Signalements assignés'}</Text>
                     <View style={styles.countPill}>
-                      <Text style={styles.countPillText}>{assignedReports.length}</Text>
+                      <Text style={styles.countPillText}>{assignedReports.filter((r) => r.status === 'assigned').length}</Text>
                     </View>
                   </View>
                 </View>
@@ -258,7 +259,13 @@ export default function HomeScreen({ navigation }) {
                         {report.zone}{report.note ? ` · ${report.note}` : ''}
                       </Text>
                     </View>
-                    <Text style={styles.reportOpen}>{en ? 'OPEN' : 'OUVRIR'}</Text>
+                    {report.status === 'awaiting_review' ? (
+                      <Text style={[styles.reportOpen, { color: '#b45309' }]}>{en ? 'IN REVIEW' : 'EN VÉRIF.'}</Text>
+                    ) : report.review?.decision === 'rejected' ? (
+                      <Text style={[styles.reportOpen, { color: colors.critical }]}>{en ? 'REDO' : 'À REFAIRE'}</Text>
+                    ) : (
+                      <Text style={styles.reportOpen}>{en ? 'OPEN' : 'OUVRIR'}</Text>
+                    )}
                   </TouchableOpacity>
                 ))}
                 <View style={{ height: 10 }} />

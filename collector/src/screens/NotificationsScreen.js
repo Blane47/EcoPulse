@@ -46,7 +46,7 @@ export default function NotificationsScreen({ navigation }) {
 
   const open = (item) => {
     if (!item.read) markRead(item._id);
-    if (item.type === 'report_assigned' && item.report) {
+    if (opensReport(item)) {
       navigation.navigate('AssignedReport', { id: item.report });
     }
   };

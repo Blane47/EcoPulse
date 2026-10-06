@@ -31,7 +31,7 @@ export default function NotificationBanner() {
   const open = () => {
     markRead(banner._id);
     hide();
-    if (banner.type === 'report_assigned' && banner.report) navigate('AssignedReport', { id: banner.report });
+    if (opensReport(banner)) navigate('AssignedReport', { id: banner.report });
     else navigate('Notifications');
   };
 
