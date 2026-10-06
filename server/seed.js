@@ -8,6 +8,8 @@ const Activity = require('./models/Activity');
 const Schedule = require('./models/Schedule');
 const Report = require('./models/Report');
 const Notification = require('./models/Notification');
+const LeaveRequest = require('./models/LeaveRequest');
+const { today, addDays } = require('./utils/dates');
 
 const seedData = async () => {
   try {
@@ -23,6 +25,7 @@ const seedData = async () => {
       Schedule.deleteMany({}),
       Report.deleteMany({}),
       Notification.deleteMany({}),
+      LeaveRequest.deleteMany({}),
     ]);
     console.log('Cleared existing data');
 
@@ -46,6 +49,19 @@ const seedData = async () => {
       { name: 'Abiba Lum', email: 'abiba@ecopulse.cm', password: 'collector123', phone: '+237670000006', truck: 'Truck #402', zone: 'Great Soppo', status: 'active', binsAssigned: 36, collectionsToday: 15, collectionsMonth: 240, efficiency: 98 },
     ]);
     console.log(`${collectors.length} collectors created`);
+
+    // Samuel's on-leave status comes from approved leave; Kevin is waiting for an answer
+    const day = today();
+    const samuel = collectors.find((c) => c.name === 'Samuel Tabi');
+    const kevin = collectors.find((c) => c.name === 'Kevin Besong');
+    await LeaveRequest.create([
+      {
+        collector: samuel._id, startDate: addDays(day, -2), endDate: addDays(day, 4), reason: 'Family funeral in Bamenda',
+        status: 'approved', reviewedBy: admin._id, reviewedAt: new Date(), startedAt: new Date(),
+      },
+      { collector: kevin._id, startDate: addDays(day, 14), endDate: addDays(day, 16), reason: 'Sister’s wedding in Limbe' },
+    ]);
+    console.log('2 leave requests created');
 
     // Create bins — real Buea, Cameroon coordinates
     // create() (not insertMany) so the save hook sets each bin's status from its fill level

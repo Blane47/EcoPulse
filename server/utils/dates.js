@@ -23,9 +23,11 @@ const addDays = (day, n) => {
   return date.toISOString().slice(0, 10);
 };
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 // "12 Oct" or "12 Oct – 15 Oct" (English; apps format dates themselves)
 const formatRange = (start, end) => {
-  const fmt = (d) => new Date(`${d}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const fmt = (d) => `${Number(d.slice(8))} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
   return start === end ? fmt(start) : `${fmt(start)} – ${fmt(end)}`;
 };
 

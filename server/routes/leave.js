@@ -93,6 +93,7 @@ router.patch('/:id/cancel', protect, collectorOnly, async (req, res, next) => {
     }
     leave.status = 'cancelled';
     leave.cancelledBy = 'collector';
+    leave.cancelledAt = new Date();
     await leave.save();
     res.json(leave);
   } catch (error) {
@@ -114,6 +115,7 @@ router.get('/', protect, authorize('admin'), async (req, res, next) => {
     const leaves = await LeaveRequest.find(filter)
       .populate('collector', COLLECTOR_FIELDS)
       .populate('reviewedBy', 'name')
+      .populate('cancelledByUser', 'name')
       .sort({ startDate: -1, createdAt: -1 })
       .limit(500);
     res.json({ leaves, today: today() });
@@ -161,8 +163,11 @@ router.patch('/:id/review', protect, authorize('admin'), async (req, res, next) 
 router.patch('/:id/end', protect, authorize('admin'), async (req, res, next) => {
   try {
     const note = typeof req.body.note === 'string' ? req.body.note.trim().slice(0, 500) : '';
-    const leave = await findLeave(req, res);
+    let leave = await findLeave(req, res);
     if (!leave) return;
+    // Catch up first, so leave whose first day has arrived counts as started even if the job hasn't run yet
+    await applyLeaveStatuses(leave.collector);
+    leave = await LeaveRequest.findById(leave._id);
     if (leave.status !== 'approved' || leave.endedAt) {
       return res.status(400).json({ message: 'Only approved leave that hasn’t finished can be ended' });
     }
@@ -170,13 +175,15 @@ router.patch('/:id/end', protect, authorize('admin'), async (req, res, next) => 
     const started = !!leave.startedAt;
     leave.status = 'cancelled';
     leave.cancelledBy = 'admin';
+    leave.cancelledByUser = req.user._id;
+    leave.cancelledAt = new Date();
     if (note) leave.reviewNote = note;
     if (started) leave.endedAt = new Date();
     await leave.save();
     if (started) await endLeaveStatus(leave.collector, leave._id);
 
     await notify(leave, 'leave_cancelled', started ? 'Leave ended early' : 'Leave cancelled', note);
-    await leave.populate([{ path: 'collector', select: COLLECTOR_FIELDS }, { path: 'reviewedBy', select: 'name' }]);
+    await leave.populate([{ path: 'collector', select: COLLECTOR_FIELDS }, { path: 'reviewedBy', select: 'name' }, { path: 'cancelledByUser', select: 'name' }]);
     res.json(leave);
   } catch (error) {
     next(error);

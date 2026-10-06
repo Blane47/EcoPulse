@@ -14,6 +14,8 @@ const leaveRequestSchema = new mongoose.Schema({
   reviewedAt: { type: Date, default: null },
   // Who cancelled it: the collector (before it started) or an admin (any time, ending it early)
   cancelledBy: { type: String, enum: ['collector', 'admin', null], default: null },
+  cancelledByUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  cancelledAt: { type: Date, default: null },
   // Set when the collector was put on leave / brought back, so each happens once
   startedAt: { type: Date, default: null },
   endedAt: { type: Date, default: null },
