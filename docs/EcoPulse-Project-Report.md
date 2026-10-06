@@ -270,7 +270,7 @@ EcoPulse follows a **client-server architecture** with a centralized REST API se
 +------------------+     +------------------+     +------------------+
 | Admin Dashboard  |     | Collector App    |     | Community App    |
 | (React + Vite)   |     | (React Native)   |     | (React Native)   |
-| Port: 5173       |     | Expo SDK 55      |     | Expo SDK 55      |
+| Port: 5173       |     | Expo SDK 57      |     | Expo SDK 57      |
 +--------+---------+     +--------+---------+     +--------+---------+
          |                        |                        |
          |    HTTP/REST (JSON)    |                        |
@@ -297,7 +297,7 @@ EcoPulse follows a **client-server architecture** with a centralized REST API se
 | Admin Build Tool | Vite | 6.x | Fast HMR, modern bundling |
 | Admin Charts | Recharts | 2.x | React-native charts library |
 | Admin Maps | Leaflet | 1.9.x | Free, OpenStreetMap-based |
-| Mobile Framework | React Native (Expo) | SDK 55 | Cross-platform, managed workflow |
+| Mobile Framework | React Native (Expo) | SDK 57 | Cross-platform, managed workflow |
 | Mobile Navigation | React Navigation | 7.x | Standard for React Native |
 | Mobile Maps | Mapbox GL JS | - | Free tier (25K loads/month), no credit card |
 | Backend Runtime | Node.js | 20.x | JavaScript ecosystem consistency |
