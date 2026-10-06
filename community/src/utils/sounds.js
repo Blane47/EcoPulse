@@ -1,15 +1,13 @@
-let Audio = null;
+let ExpoAudio = null;
 try {
-  Audio = require('expo-av').Audio;
+  ExpoAudio = require('expo-audio');
 } catch {}
 
-let sounds = {};
-
-if (Audio) {
-  Audio.setAudioModeAsync({
-    playsInSilentModeIOS: false,
-    staysActiveInBackground: false,
-    shouldDuckAndroid: true,
+if (ExpoAudio) {
+  ExpoAudio.setAudioModeAsync({
+    playsInSilentMode: false,
+    shouldPlayInBackground: false,
+    interruptionMode: 'duckOthers',
   }).catch(() => {});
 }
 
@@ -19,19 +17,24 @@ const SOUND_FILES = {
   receive: require('../assets/sounds/receive.mp3'),
 };
 
+// Players are created up front so the first play isn't lost while the file loads
+const players = {};
+if (ExpoAudio) {
+  for (const key of Object.keys(SOUND_FILES)) {
+    try {
+      players[key] = ExpoAudio.createAudioPlayer(SOUND_FILES[key]);
+    } catch {}
+  }
+}
+
 async function play(key, volume = 0.5) {
-  if (!Audio) return;
+  const player = players[key];
+  if (!player) return;
   try {
-    if (sounds[key]) {
-      await sounds[key].setPositionAsync(0);
-      await sounds[key].playAsync();
-    } else {
-      const { sound } = await Audio.Sound.createAsync(
-        SOUND_FILES[key],
-        { shouldPlay: true, volume }
-      );
-      sounds[key] = sound;
-    }
+    // A finished player stays at the end, so rewind before replaying
+    await player.seekTo(0);
+    player.volume = volume;
+    player.play();
   } catch {}
 }
 
