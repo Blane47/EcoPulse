@@ -16,6 +16,8 @@ const leaveRequestSchema = new mongoose.Schema({
   cancelledBy: { type: String, enum: ['collector', 'admin', null], default: null },
   cancelledByUser: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   cancelledAt: { type: Date, default: null },
+  // The admin's note when cancelling or ending leave (the approval note stays in reviewNote)
+  cancelNote: { type: String, default: '', trim: true, maxlength: 500 },
   // Set when the collector was put on leave / brought back, so each happens once
   startedAt: { type: Date, default: null },
   endedAt: { type: Date, default: null },

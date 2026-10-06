@@ -147,7 +147,7 @@ router.patch('/:id/review', protect, authorize('admin'), async (req, res, next) 
 
     if (decision === 'approve') {
       await notify(leave, 'leave_approved', 'Leave approved', note);
-      await applyLeaveStatuses(leave.collector);
+      await applyLeaveStatuses(leave.collector, { notify: false });
     } else {
       await notify(leave, 'leave_declined', 'Leave declined', note);
     }
@@ -166,7 +166,7 @@ router.patch('/:id/end', protect, authorize('admin'), async (req, res, next) => 
     let leave = await findLeave(req, res);
     if (!leave) return;
     // Catch up first, so leave whose first day has arrived counts as started even if the job hasn't run yet
-    await applyLeaveStatuses(leave.collector);
+    await applyLeaveStatuses(leave.collector, { notify: false });
     leave = await LeaveRequest.findById(leave._id);
     if (leave.status !== 'approved' || leave.endedAt) {
       return res.status(400).json({ message: 'Only approved leave that hasn’t finished can be ended' });
@@ -177,7 +177,7 @@ router.patch('/:id/end', protect, authorize('admin'), async (req, res, next) => 
     leave.cancelledBy = 'admin';
     leave.cancelledByUser = req.user._id;
     leave.cancelledAt = new Date();
-    if (note) leave.reviewNote = note;
+    leave.cancelNote = note;
     if (started) leave.endedAt = new Date();
     await leave.save();
     if (started) await endLeaveStatus(leave.collector, leave._id);

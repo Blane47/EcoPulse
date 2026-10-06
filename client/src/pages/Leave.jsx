@@ -251,6 +251,7 @@ export default function Leave() {
                     </p>
                   )}
                   {leave.reviewNote && <p className="text-gray-600 break-words">Note to the collector: “{leave.reviewNote}”</p>}
+                  {leave.cancelNote && <p className="text-gray-600 break-words">Note when cancelling: “{leave.cancelNote}”</p>}
                 </div>
 
                 {others.length > 0 && (

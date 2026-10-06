@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 // The collector app polls for these; push delivery can be layered on later.
 const notificationSchema = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'Collector', required: true },
-  type: { type: String, enum: ['report_assigned', 'report_unassigned', 'proof_approved', 'proof_rejected', 'leave_approved', 'leave_declined', 'leave_cancelled'], required: true },
+  type: { type: String, enum: ['report_assigned', 'report_unassigned', 'proof_approved', 'proof_rejected', 'leave_approved', 'leave_declined', 'leave_cancelled', 'leave_started', 'leave_ended'], required: true },
   title: { type: String, required: true },
   body: { type: String, default: '' },
   report: { type: mongoose.Schema.Types.ObjectId, ref: 'Report', default: null },
