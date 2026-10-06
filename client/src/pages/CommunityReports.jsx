@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { MapPin, Phone, User, Clock, Eye, CheckCircle, AlertTriangle, UserCheck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { MapPin, Phone, User, Clock, Eye, CheckCircle, AlertTriangle, UserCheck, ZoomIn, ListIcon, MapIcon } from 'lucide-react';
 import api from '../api/axios';
 import { getCollectors } from '../api/collectors';
+import ReportsMap from '../components/reports/ReportsMap';
+import PhotoLightbox from '../components/reports/PhotoLightbox';
 
 const statusConfig = {
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: AlertTriangle },
@@ -19,21 +22,25 @@ export default function CommunityReports() {
   const [assigneeId, setAssigneeId] = useState('');
   const [assigning, setAssigning] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [view, setView] = useState('list');
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [deepLink, setDeepLink] = useState(null);
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
 
-  const fetchReports = async () => {
-    try {
-      const params = filter !== 'all' ? { status: filter } : {};
-      const { data } = await api.get('/reports', { params });
-      setReports(data);
-    } catch {
-      setReports([]);
-    }
-    setLoading(false);
-  };
-
+  // All reports are fetched once; the status filter is applied on the client so the stats always cover everything
   useEffect(() => {
+    const fetchReports = async () => {
+      try {
+        const { data } = await api.get('/reports');
+        setReports(data);
+      } catch {
+        setReports([]);
+      }
+      setLoading(false);
+    };
     fetchReports();
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
     getCollectors().then(setCollectors).catch(() => setCollectors([]));
@@ -43,7 +50,28 @@ export default function CommunityReports() {
     setSelectedReport(report);
     setAssigneeId(report?.assignedCollector?._id || '');
     setActionError('');
+    setPhotoOpen(false);
   };
+
+  const closePhoto = useCallback(() => setPhotoOpen(false), []);
+
+  // Deep link from global search (?report=<id>): once loaded, open that report. Keyed on the
+  // navigation so searching for the same report again reopens it; unknown ids are ignored.
+  const linkedId = searchParams.get('report');
+  if (!loading && linkedId && deepLink?.key !== location.key) {
+    const match = reports.find((r) => r._id === linkedId);
+    setDeepLink({ key: location.key, id: match?._id });
+    if (match) {
+      selectReport(match);
+      if (filter !== 'all' && match.status !== filter) setFilter('all');
+    }
+  }
+
+  // On desktop the list sits beside the panel, so bring the linked card into view
+  useEffect(() => {
+    if (!deepLink?.id || !window.matchMedia('(min-width: 1024px)').matches) return;
+    document.getElementById(`report-${deepLink.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [deepLink]);
 
   const replaceReport = (updated) => {
     setReports((prev) => prev.map((r) => (r._id === updated._id ? updated : r)));
@@ -94,6 +122,8 @@ export default function CommunityReports() {
     collected: reports.filter((r) => r.status === 'collected').length,
   };
 
+  const filteredReports = filter === 'all' ? reports : reports.filter((r) => r.status === filter);
+
   return (
     <div>
       {/* Header */}
@@ -120,21 +150,41 @@ export default function CommunityReports() {
         ))}
       </div>
 
-      {/* Filter Pills */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {['all', 'pending', 'reviewed', 'assigned', 'collected'].map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
-              filter === f
-                ? 'bg-green-500 text-white'
-                : 'bg-white text-gray-600 border border-card-border hover:bg-gray-50'
-            }`}
-          >
-            {f === 'all' ? 'All' : f} ({counts[f]})
-          </button>
-        ))}
+      {/* Filter Pills + List/Map toggle */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+        <div className="flex flex-wrap gap-2">
+          {['all', 'pending', 'reviewed', 'assigned', 'collected'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
+                filter === f
+                  ? 'bg-green-500 text-white'
+                  : 'bg-white text-gray-600 border border-card-border hover:bg-gray-50'
+              }`}
+            >
+              {f === 'all' ? 'All' : f} ({counts[f]})
+            </button>
+          ))}
+        </div>
+        <div role="group" aria-label="Display as" className="inline-flex self-start shrink-0 gap-1 p-1 rounded-lg bg-white border border-card-border">
+          {[
+            { key: 'list', label: 'List', icon: <ListIcon size={14} /> },
+            { key: 'map', label: 'Map', icon: <MapIcon size={14} /> },
+          ].map(({ key, label, icon }) => (
+            <button
+              key={key}
+              onClick={() => setView(key)}
+              aria-pressed={view === key}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                view === key ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
@@ -143,15 +193,16 @@ export default function CommunityReports() {
         <div className="flex-1 min-w-0">
           {loading ? (
             <div className="text-center py-20 text-gray-400">Loading reports...</div>
-          ) : reports.length === 0 ? (
+          ) : view === 'map' ? (
+            <ReportsMap reports={filteredReports} selectedId={selectedReport?._id} onSelect={selectReport} />
+          ) : filteredReports.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-4xl mb-3">📋</p>
-              <p className="text-gray-500">No reports yet</p>
+              <p className="text-gray-500">{reports.length === 0 ? 'No reports yet' : `No ${filter} reports`}</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {reports
-                .filter((r) => filter === 'all' || r.status === filter)
+              {filteredReports
                 .map((report) => {
                   const sc = statusConfig[report.status] || statusConfig.pending;
                   const StatusIcon = sc.icon;
@@ -160,6 +211,7 @@ export default function CommunityReports() {
                   return (
                     <div
                       key={report._id}
+                      id={`report-${report._id}`}
                       onClick={() => selectReport(report)}
                       className={`bg-white rounded-xl border p-4 cursor-pointer transition-all hover:shadow-md ${
                         isSelected ? 'border-green-500 shadow-md' : 'border-card-border'
@@ -222,11 +274,22 @@ export default function CommunityReports() {
 
             {/* Photo */}
             {selectedReport.photo && (
-              <img
-                src={selectedReport.photo}
-                alt="Report"
-                className="w-full h-48 object-cover rounded-lg mb-4"
-              />
+              <button
+                type="button"
+                onClick={() => setPhotoOpen(true)}
+                aria-label="View photo full size"
+                className="group relative block w-full mb-4 rounded-lg overflow-hidden cursor-zoom-in focus:outline-none focus-visible:ring-2 focus-visible:ring-green-500"
+              >
+                <img
+                  src={selectedReport.photo}
+                  alt="Report"
+                  className="w-full h-48 object-cover transition-transform duration-200 group-hover:scale-[1.02]"
+                />
+                <span className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-1 rounded-md bg-black/60 text-[11px] font-medium text-white">
+                  <ZoomIn size={12} />
+                  View full size
+                </span>
+              </button>
             )}
 
             {/* Location */}
@@ -372,6 +435,15 @@ export default function CommunityReports() {
           </div>
         )}
       </div>
+
+      {/* Photo viewer — above the full-screen detail sheet */}
+      {photoOpen && selectedReport?.photo && (
+        <PhotoLightbox
+          src={selectedReport.photo}
+          alt={`Photo of the report at ${selectedReport.location}`}
+          onClose={closePhoto}
+        />
+      )}
     </div>
   );
 }
