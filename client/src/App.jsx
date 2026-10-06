@@ -1,19 +1,22 @@
-import { useState } from 'react';
+import { useState, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/layout/Layout';
-import Dashboard from './pages/Dashboard';
-import Bins from './pages/Bins';
-import MapView from './pages/MapView';
-import Collectors from './pages/Collectors';
-import Reports from './pages/Reports';
-import Settings from './pages/Settings';
-import Chat from './pages/Chat';
-import CollectorProfile from './pages/CollectorProfile';
-import CommunityReports from './pages/CommunityReports';
-import Applications from './pages/Applications';
 import Login from './pages/Login';
 import AddBinModal from './components/ui/AddBinModal';
+
+// Pages load on first visit so the initial download stays small (charts and maps are heavy).
+// Layout shows a loading state for them while the sidebar and top bar stay on screen.
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Bins = lazy(() => import('./pages/Bins'));
+const MapView = lazy(() => import('./pages/MapView'));
+const Collectors = lazy(() => import('./pages/Collectors'));
+const Reports = lazy(() => import('./pages/Reports'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Chat = lazy(() => import('./pages/Chat'));
+const CollectorProfile = lazy(() => import('./pages/CollectorProfile'));
+const CommunityReports = lazy(() => import('./pages/CommunityReports'));
+const Applications = lazy(() => import('./pages/Applications'));
 
 function ProtectedRoute({ children }) {
   const { authenticated } = useAuth();
