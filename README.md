@@ -113,12 +113,12 @@ These exist only in a freshly seeded local database:
 
 ### Upgrading an existing database
 
-Databases created before phone normalisation and PIN hashing need a one-off migration (dry run by default):
+Databases created by older versions need a one-off migration (phone numbers, PIN hashing, bin statuses; dry run by default):
 
 ```bash
 cd server
-node scripts/migrate-phones-and-pins.js           # shows what would change
-node scripts/migrate-phones-and-pins.js --apply   # writes it
+node scripts/migrate.js           # shows what would change
+node scripts/migrate.js --apply   # writes it
 ```
 
 ## Project status

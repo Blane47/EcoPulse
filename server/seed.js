@@ -48,7 +48,8 @@ const seedData = async () => {
     console.log(`${collectors.length} collectors created`);
 
     // Create bins — real Buea, Cameroon coordinates
-    const bins = await Bin.insertMany([
+    // create() (not insertMany) so the save hook sets each bin's status from its fill level
+    const bins = await Bin.create([
       // Molyko Zone
       { binId: 'BIN-001', location: 'UB Main Gate, Molyko', zone: 'Molyko', type: 'General', fillLevel: 92, coordinates: { lat: 4.1548, lng: 9.2985 }, assignedCollector: collectors[0]._id, lastCollected: new Date(Date.now() - 2 * 3600000) },
       { binId: 'BIN-108', location: 'Molyko Junction (T-Junction)', zone: 'Molyko', type: 'General', fillLevel: 35, coordinates: { lat: 4.1562, lng: 9.2942 }, assignedCollector: collectors[3]._id, lastCollected: new Date(Date.now() - 3 * 3600000) },

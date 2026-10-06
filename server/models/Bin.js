@@ -16,11 +16,17 @@ const binSchema = new mongoose.Schema({
   photo: { type: String, default: null },
 }, { timestamps: true });
 
+// Status is derived from fill level. Updates that bypass save() (findByIdAndUpdate, insertMany)
+// must call statusForFill themselves.
+binSchema.statics.statusForFill = (fillLevel) => {
+  if (fillLevel >= 80) return 'critical';
+  if (fillLevel >= 50) return 'warning';
+  if (fillLevel >= 20) return 'optimal';
+  return 'empty';
+};
+
 binSchema.pre('save', function () {
-  if (this.fillLevel >= 80) this.status = 'critical';
-  else if (this.fillLevel >= 50) this.status = 'warning';
-  else if (this.fillLevel >= 20) this.status = 'optimal';
-  else this.status = 'empty';
+  this.status = this.constructor.statusForFill(this.fillLevel);
 });
 
 module.exports = mongoose.model('Bin', binSchema);

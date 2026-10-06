@@ -1,13 +1,19 @@
-// One-off migration for databases created before phone normalisation and PIN hashing.
+// One-off data migration for databases created by older versions of EcoPulse:
+//   - normalises phone numbers to +237XXXXXXXXX (and the community chat ids built from them)
+//   - bcrypt-hashes collector PINs stored in plain text
+//   - recomputes bin status from fill level (older seeds skipped the model hook)
 //
-//   node scripts/migrate-phones-and-pins.js           # dry run: prints what would change
-//   node scripts/migrate-phones-and-pins.js --apply   # writes the changes
+//   node scripts/migrate.js           # dry run: prints what would change
+//   node scripts/migrate.js --apply   # writes the changes
+//
+// Safe to run more than once.
 //
 // Uses MONGODB_URI from the environment / server/.env.
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { normalizePhone } = require('../utils/phone');
+const Bin = require('../models/Bin');
 
 const APPLY = process.argv.includes('--apply');
 const BCRYPT_HASH = /^\$2[aby]\$\d{2}\$/;
@@ -73,6 +79,20 @@ async function hashPins(db) {
   return changed;
 }
 
+async function fixBinStatuses(db) {
+  const col = db.collection('bins');
+  const bins = await col.find({}, { projection: { binId: 1, fillLevel: 1, status: 1 } }).toArray();
+  let changed = 0;
+  for (const bin of bins) {
+    const status = Bin.statusForFill(bin.fillLevel ?? 0);
+    if (status === bin.status) continue;
+    changed++;
+    console.log(`  bins.status: ${bin.binId} (${bin.fillLevel}% full) "${bin.status}" -> "${status}"`);
+    if (APPLY) await col.updateOne({ _id: bin._id }, { $set: { status } });
+  }
+  return changed;
+}
+
 (async () => {
   await mongoose.connect(process.env.MONGODB_URI);
   const db = mongoose.connection.db;
@@ -86,6 +106,7 @@ async function hashPins(db) {
   total += await normalizeField(db, 'reports', 'deviceId'); // older app versions stored the phone here
   total += await migrateCommunityChats(db);
   total += await hashPins(db);
+  total += await fixBinStatuses(db);
 
   console.log(`\n${total} change(s) ${APPLY ? 'applied' : 'would be applied — rerun with --apply to write them'}`);
   await mongoose.disconnect();
