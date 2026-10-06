@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Message = require('../models/Message');
+const Collector = require('../models/Collector');
 const { isCollector } = require('../middleware/auth');
 
 // A collector's conversation with the admin uses the collector's id as chatId.
@@ -22,6 +24,8 @@ exports.getChats = async (req, res, next) => {
           lastMessage: { $first: '$text' },
           lastSender: { $first: '$senderRole' },
           senderName: { $first: '$senderName' },
+          // Newest first: names of the non-admin side, so the chat is labelled with the other person
+          otherNames: { $push: { $cond: [{ $ne: ['$senderRole', 'admin'] }, '$senderName', '$$REMOVE'] } },
           updatedAt: { $first: '$createdAt' },
           unread: {
             $sum: {
@@ -31,7 +35,17 @@ exports.getChats = async (req, res, next) => {
         },
       },
       { $sort: { updatedAt: -1 } },
+      { $addFields: { participantName: { $arrayElemAt: ['$otherNames', 0] } } },
+      { $project: { otherNames: 0 } },
     ]);
+
+    // A collector chat where only the admin has written yet: look the collector up by id
+    const unnamed = chats.filter((c) => !c.participantName && mongoose.isValidObjectId(c._id));
+    if (unnamed.length) {
+      const collectors = await Collector.find({ _id: { $in: unnamed.map((c) => c._id) } }).select('name');
+      const names = new Map(collectors.map((c) => [c._id.toString(), c.name]));
+      unnamed.forEach((c) => { c.participantName = names.get(c._id) || null; });
+    }
     res.json(chats);
   } catch (error) {
     next(error);

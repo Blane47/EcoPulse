@@ -16,6 +16,8 @@ const communityRoutes = require('./routes/community');
 const announcementRoutes = require('./routes/announcements');
 const applicationRoutes = require('./routes/applications');
 const notificationRoutes = require('./routes/notifications');
+const userRoutes = require('./routes/users');
+const searchRoutes = require('./routes/search');
 
 const app = express();
 
@@ -35,6 +37,8 @@ app.use('/api/community', communityRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/search', searchRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

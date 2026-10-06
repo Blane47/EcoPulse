@@ -12,17 +12,24 @@ const generateToken = (id) => {
 
 exports.register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    // Called by an admin to add a dashboard staff account (see routes/auth.js)
+    const { name, password } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    if (!name?.trim() || !email || !password) {
+      return res.status(400).json({ message: 'Name, email and password are required' });
+    }
+    if (password.length < 6) {
+      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password, role });
-    const token = generateToken(user._id);
-
-    res.status(201).json({ user, token });
+    // Dashboard pages call admin-only endpoints, so staff accounts are admins
+    const user = await User.create({ name: name.trim(), email, password, role: 'admin' });
+    res.status(201).json({ user });
   } catch (error) {
     next(error);
   }

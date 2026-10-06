@@ -1,5 +1,6 @@
 const Bin = require('../models/Bin');
 const { isCollector } = require('../middleware/auth');
+const { escapeRegex } = require('../utils/escapeRegex');
 
 exports.getAllBins = async (req, res, next) => {
   try {
@@ -9,6 +10,11 @@ exports.getAllBins = async (req, res, next) => {
     if (zone) filter.zone = zone;
     if (type) filter.type = type;
     if (status) filter.status = status;
+    // Text search from the dashboard (bin ID or location)
+    if (req.query.q?.trim()) {
+      const match = new RegExp(escapeRegex(req.query.q.trim().slice(0, 60)), 'i');
+      filter.$or = [{ binId: match }, { location: match }];
+    }
 
     const skip = (page - 1) * limit;
     const [bins, total] = await Promise.all([
