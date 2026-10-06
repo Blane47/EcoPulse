@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock, KeyRound } from 'lucide-react';
-import { getCollectorById, updateCollector } from '../api/collectors';
+import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock, KeyRound, AlertTriangle } from 'lucide-react';
+import { getCollectorById, updateCollector, resetCollectorPassword } from '../api/collectors';
 import api from '../api/axios';
 import Badge from '../components/ui/Badge';
 import AssignZoneModal from '../components/ui/AssignZoneModal';
@@ -15,9 +15,13 @@ export default function CollectorProfile() {
   const [showAssignZone, setShowAssignZone] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
-  const [resettingPin, setResettingPin] = useState(false);
-  // { pin } after a successful reset (shown once), or { error }
-  const [pinResult, setPinResult] = useState(null);
+  const [resettingPassword, setResettingPassword] = useState(false);
+  // { email, temporaryPassword } after a successful reset (shown once), or { error }
+  const [passwordResult, setPasswordResult] = useState(null);
+  // Inline email editor in the Contact card; null when closed
+  const [emailDraft, setEmailDraft] = useState(null);
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailError, setEmailError] = useState('');
 
   const fetchData = async () => {
     try {
@@ -39,19 +43,41 @@ export default function CollectorProfile() {
     fetchData();
   }, [id]);
 
-  // Collectors sign in with phone + PIN; when one forgets it, the admin issues a new one here
-  const handleResetPin = async () => {
-    if (!window.confirm(`Give ${collector.name} a new login PIN? Their current PIN will stop working.`)) return;
-    setResettingPin(true);
-    setPinResult(null);
-    const pin = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
+  // Collectors sign in with email + password; when one forgets it, the admin issues a temporary one here
+  const handleResetPassword = async () => {
+    // Without an email the server refuses with a message we show, so there's nothing to confirm
+    if (collector.email && !window.confirm(`Give ${collector.name} a new temporary password? Their current password will stop working.`)) return;
+    setResettingPassword(true);
+    setPasswordResult(null);
     try {
-      await updateCollector(id, { pin });
-      setPinResult({ pin });
+      const data = await resetCollectorPassword(id);
+      setPasswordResult(data);
+      setCollector((prev) => ({ ...prev, mustChangePassword: true }));
     } catch (err) {
-      setPinResult({ error: err.response?.data?.message || 'Could not reset the PIN.' });
+      setPasswordResult({ error: err.response?.data?.message || 'Could not reset the password.' });
     }
-    setResettingPin(false);
+    setResettingPassword(false);
+  };
+
+  const handleSaveEmail = async (e) => {
+    e.preventDefault();
+    setSavingEmail(true);
+    setEmailError('');
+    try {
+      const updated = await updateCollector(id, { email: emailDraft });
+      setCollector((prev) => ({ ...prev, email: updated.email }));
+      setEmailDraft(null);
+      // A "no email" error from an earlier reset no longer applies
+      setPasswordResult((prev) => (prev?.error ? null : prev));
+    } catch (err) {
+      setEmailError(err.response?.data?.message || 'Could not save the email.');
+    }
+    setSavingEmail(false);
+  };
+
+  const closeEmailEditor = () => {
+    setEmailDraft(null);
+    setEmailError('');
   };
 
   const handleStatusChange = async (newStatus) => {
@@ -162,39 +188,60 @@ export default function CollectorProfile() {
                 Assign Zone
               </button>
               <button
-                onClick={handleResetPin}
-                disabled={resettingPin}
+                onClick={handleResetPassword}
+                disabled={resettingPassword}
                 className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition-colors border border-white/20 disabled:opacity-50"
               >
                 <KeyRound size={14} className="inline mr-1.5 -mt-0.5" />
-                {resettingPin ? 'Resetting…' : 'Reset PIN'}
+                {resettingPassword ? 'Resetting…' : 'Reset password'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {pinResult && (
+      {!collector.email && (
+        <div className="mb-6 p-4 rounded-xl bg-amber-50 flex items-start gap-3" role="note">
+          <AlertTriangle size={18} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">
+            No sign-in email — this collector can't sign in to the Collector app until you add one.
+          </p>
+        </div>
+      )}
+
+      {passwordResult && (
         <div
           className={`mb-6 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-3 ${
-            pinResult.pin ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+            passwordResult.temporaryPassword ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
           }`}
           role="status"
         >
-          {pinResult.pin ? (
+          {passwordResult.temporaryPassword ? (
             <>
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-green-800">New PIN for {collector.name}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-green-800">New temporary password for {collector.name}</p>
                 <p className="text-xs text-green-700 mt-0.5">
-                  Give it to them to sign in with {collector.phone || 'their phone number'}. It won't be shown again.
+                  Give {collector.name} these sign-in details for the EcoPulse Collector app. They'll choose their own
+                  password when they next sign in. The temporary password won't be shown again.
                 </p>
               </div>
-              <p className="text-2xl font-bold text-green-700 font-mono tracking-widest">{pinResult.pin}</p>
+              <div className="flex flex-col sm:flex-row gap-3 min-w-0">
+                <div className="bg-white rounded-lg border border-green-200 px-3 py-2 min-w-0">
+                  <p className="text-[10px] text-gray-400 font-medium uppercase">Email</p>
+                  <p className="text-sm font-semibold text-gray-900 break-all">{passwordResult.email}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-green-200 px-3 py-2">
+                  <p className="text-[10px] text-gray-400 font-medium uppercase">Temporary password</p>
+                  <p className="text-lg font-bold text-green-700 font-mono tracking-wider select-all">
+                    {passwordResult.temporaryPassword}
+                  </p>
+                </div>
+              </div>
             </>
           ) : (
-            <p className="flex-1 text-sm text-red-600">{pinResult.error}</p>
+            <p className="flex-1 text-sm text-red-600">{passwordResult.error}</p>
           )}
-          <button onClick={() => setPinResult(null)} className="text-xs text-gray-500 hover:underline self-start sm:self-center">
+          <button onClick={() => setPasswordResult(null)} className="text-xs text-gray-500 hover:underline self-start sm:self-center">
             Dismiss
           </button>
         </div>
@@ -208,6 +255,67 @@ export default function CollectorProfile() {
           <div className="bg-white rounded-xl border border-card-border p-6">
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Contact & Assignment</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl sm:col-span-2">
+                <div className="w-10 h-10 shrink-0 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <Mail size={18} className="text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] text-gray-400 uppercase font-medium">Sign-in Email</p>
+                  {emailDraft === null ? (
+                    <>
+                      <div className="flex items-center gap-x-3 gap-y-1 flex-wrap">
+                        <p className={`text-sm font-semibold break-all ${collector.email ? 'text-gray-900' : 'text-amber-700'}`}>
+                          {collector.email || 'Not set'}
+                        </p>
+                        <button
+                          onClick={() => setEmailDraft(collector.email || '')}
+                          className="text-xs font-medium text-accent hover:underline"
+                        >
+                          {collector.email ? 'Edit email' : 'Add email'}
+                        </button>
+                      </div>
+                      {collector.email && collector.mustChangePassword && (
+                        <p className="text-xs text-gray-500 mt-1">Hasn't replaced their temporary password yet</p>
+                      )}
+                    </>
+                  ) : (
+                    <form onSubmit={handleSaveEmail} className="mt-1">
+                      <label htmlFor="collector-email" className="sr-only">Sign-in email</label>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          id="collector-email"
+                          type="email"
+                          autoComplete="off"
+                          required
+                          autoFocus
+                          placeholder="e.g. name@ecopulse.cm"
+                          value={emailDraft}
+                          onChange={(e) => setEmailDraft(e.target.value)}
+                          className="flex-1 min-w-0 px-3 py-2 border border-card-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            disabled={savingEmail || !emailDraft.trim()}
+                            className="flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50"
+                            style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
+                          >
+                            {savingEmail ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeEmailEditor}
+                            className="flex-1 sm:flex-none px-4 py-2 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                      {emailError && <p className="text-xs text-red-600 mt-2" role="alert">{emailError}</p>}
+                    </form>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
                 <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
                   <Phone size={18} className="text-blue-500" />

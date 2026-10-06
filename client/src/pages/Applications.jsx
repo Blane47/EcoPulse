@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Phone, MapPin, Clock, CheckCircle, XCircle, Hourglass, IdCard } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, CheckCircle, XCircle, Hourglass, IdCard } from 'lucide-react';
 import api from '../api/axios';
 
 const statusConfig = {
@@ -19,8 +19,10 @@ export default function Applications() {
   const [filter, setFilter] = useState('pending');
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
-  // Login details for a newly created collector, shown once
+  // Sign-in details for a newly created collector, shown once
   const [credentials, setCredentials] = useState(null);
+  // Sign-in emails typed in for older applications that were submitted without one, by application id
+  const [emails, setEmails] = useState({});
 
   const fetchApplications = async () => {
     try {
@@ -44,9 +46,10 @@ export default function Applications() {
     setBusyId(app._id);
     setError('');
     try {
-      const { data } = await api.post(`/applications/${app._id}/create-collector`, {});
+      const body = app.email ? {} : { email: (emails[app._id] || '').trim() };
+      const { data } = await api.post(`/applications/${app._id}/create-collector`, body);
       replace(data.application);
-      setCredentials({ name: data.collector.name, phone: data.collector.phone, pin: data.pin });
+      setCredentials({ name: data.collector.name, email: data.collector.email, temporaryPassword: data.temporaryPassword });
     } catch (err) {
       setError(err.response?.data?.message || 'Could not approve this application.');
     }
@@ -83,20 +86,21 @@ export default function Applications() {
 
       {credentials && (
         <div className="mb-6 p-4 rounded-xl border border-green-200 bg-green-50 flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-green-800">{credentials.name} is now a collector</p>
             <p className="text-xs text-green-700 mt-0.5">
-              Give them these login details for the EcoPulse Collector app. The PIN won't be shown again.
+              Give {credentials.name} these sign-in details for the EcoPulse Collector app. They'll choose their own
+              password when they first sign in. The temporary password won't be shown again.
             </p>
           </div>
-          <div className="flex gap-3">
-            <div className="bg-white rounded-lg border border-green-200 px-3 py-2">
-              <p className="text-[10px] text-gray-400 font-medium uppercase">Phone</p>
-              <p className="text-sm font-semibold text-gray-900">{credentials.phone}</p>
+          <div className="flex flex-col sm:flex-row gap-3 min-w-0">
+            <div className="bg-white rounded-lg border border-green-200 px-3 py-2 min-w-0">
+              <p className="text-[10px] text-gray-400 font-medium uppercase">Email</p>
+              <p className="text-sm font-semibold text-gray-900 break-all">{credentials.email}</p>
             </div>
             <div className="bg-white rounded-lg border border-green-200 px-3 py-2">
-              <p className="text-[10px] text-gray-400 font-medium uppercase">PIN</p>
-              <p className="text-sm font-bold text-green-700 font-mono tracking-widest">{credentials.pin}</p>
+              <p className="text-[10px] text-gray-400 font-medium uppercase">Temporary password</p>
+              <p className="text-sm font-bold text-green-700 font-mono tracking-wider select-all">{credentials.temporaryPassword}</p>
             </div>
           </div>
           <button onClick={() => setCredentials(null)} className="text-xs text-green-700 hover:underline self-start sm:self-center">
@@ -143,6 +147,9 @@ export default function Applications() {
           {visible.map((app) => {
             const sc = statusConfig[app.status] || statusConfig.pending;
             const StatusIcon = sc.icon;
+            // Older applications have no email; the admin must supply the one they'll sign in with
+            const needsEmail = !app.email;
+            const typedEmail = (emails[app._id] || '').trim();
             return (
               <div key={app._id} className="bg-white rounded-xl border border-card-border p-5">
                 <div className="flex items-start justify-between gap-3">
@@ -153,7 +160,11 @@ export default function Applications() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-gray-900 truncate">{app.name}</p>
                       <p className="text-xs text-gray-400 flex items-center gap-1">
-                        <Phone size={11} /> {app.phone}
+                        <Phone size={11} className="shrink-0" /> {app.phone}
+                      </p>
+                      <p className={`text-xs flex items-center gap-1 min-w-0 ${needsEmail && app.status === 'pending' ? 'text-amber-700' : 'text-gray-400'}`}>
+                        <Mail size={11} className="shrink-0" />
+                        <span className="truncate">{app.email || 'No email'}</span>
                       </p>
                     </div>
                   </div>
@@ -175,6 +186,24 @@ export default function Applications() {
                   <p className="text-sm text-gray-600 mt-3 bg-gray-50 rounded-lg p-3">“{app.motivation}”</p>
                 )}
 
+                {app.status === 'pending' && needsEmail && (
+                  <div className="mt-4">
+                    <label htmlFor={`app-email-${app._id}`} className="block text-xs font-medium text-gray-500 mb-1.5">
+                      Sign-in email for the Collector app
+                    </label>
+                    <input
+                      id={`app-email-${app._id}`}
+                      type="email"
+                      autoComplete="off"
+                      placeholder="e.g. name@ecopulse.cm"
+                      value={emails[app._id] || ''}
+                      onChange={(e) => setEmails((prev) => ({ ...prev, [app._id]: e.target.value }))}
+                      className="w-full px-3 py-2 border border-card-border rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">This application was sent without an email. Add one to approve it.</p>
+                  </div>
+                )}
+
                 {app.status === 'pending' && (
                   <div className="flex gap-2 mt-4">
                     <button
@@ -186,7 +215,7 @@ export default function Applications() {
                     </button>
                     <button
                       onClick={() => approve(app)}
-                      disabled={busyId === app._id}
+                      disabled={busyId === app._id || (needsEmail && !typedEmail)}
                       className="flex-1 py-2 rounded-lg text-xs font-medium text-white disabled:opacity-50"
                       style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
                     >

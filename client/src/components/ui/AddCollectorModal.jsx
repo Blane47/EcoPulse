@@ -3,12 +3,11 @@ import { X } from 'lucide-react';
 import { zones } from '../../data/mockData';
 import { createCollector } from '../../api/collectors';
 
-const randomPin = () => String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
-const emptyForm = () => ({ name: '', phone: '', pin: randomPin(), truck: '', zone: '', status: 'active' });
+const emptyForm = () => ({ name: '', email: '', phone: '', truck: '', zone: '', status: 'active' });
 
 export default function AddCollectorModal({ isOpen, onClose, onCollectorAdded }) {
   const [formData, setFormData] = useState(emptyForm);
-  // Login details shown once after creation so the admin can hand them to the collector
+  // Sign-in details shown once after creation so the admin can hand them to the collector
   const [created, setCreated] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -29,19 +28,17 @@ export default function AddCollectorModal({ isOpen, onClose, onCollectorAdded })
     e.preventDefault();
     setError('');
 
-    if (!formData.name || !formData.zone || !formData.phone) {
-      setError('Name, phone and zone are required.');
-      return;
-    }
-    if (!/^\d{6}$/.test(formData.pin)) {
-      setError('PIN must be exactly 6 digits.');
+    if (!formData.name.trim() || !formData.email.trim() || !formData.zone) {
+      setError('Name, email and zone are required.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const collector = await createCollector(formData);
-      setCreated({ name: collector.name, phone: collector.phone, pin: formData.pin });
+      // The server generates the temporary password; leave phone out when blank (it's optional)
+      const { phone, ...rest } = formData;
+      const { collector, temporaryPassword } = await createCollector(phone.trim() ? formData : rest);
+      setCreated({ name: collector.name, email: collector.email, temporaryPassword });
       onCollectorAdded?.();
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to add collector.');
@@ -59,16 +56,19 @@ export default function AddCollectorModal({ isOpen, onClose, onCollectorAdded })
           <div className="p-6">
             <h2 className="text-lg font-bold text-gray-900">Collector added</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Give {created.name} these login details for the EcoPulse Collector app. The PIN won't be shown again.
+              Give {created.name} these sign-in details for the EcoPulse Collector app. They'll choose their own
+              password when they first sign in. The temporary password won't be shown again.
             </p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <div className="bg-gray-50 border border-card-border rounded-lg p-3">
-                <p className="text-xs text-gray-400 font-medium uppercase">Phone</p>
-                <p className="text-sm font-semibold text-gray-900 mt-1">{created.phone}</p>
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="bg-gray-50 border border-card-border rounded-lg p-3 min-w-0">
+                <p className="text-xs text-gray-400 font-medium uppercase">Email</p>
+                <p className="text-sm font-semibold text-gray-900 mt-1 break-all">{created.email}</p>
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <p className="text-xs text-gray-400 font-medium uppercase">PIN</p>
-                <p className="text-lg font-bold text-green-700 mt-0.5 font-mono tracking-widest">{created.pin}</p>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 min-w-0">
+                <p className="text-xs text-gray-400 font-medium uppercase">Temporary password</p>
+                <p className="text-lg font-bold text-green-700 mt-0.5 font-mono tracking-wider break-all select-all">
+                  {created.temporaryPassword}
+                </p>
               </div>
             </div>
             <button
@@ -110,34 +110,31 @@ export default function AddCollectorModal({ isOpen, onClose, onCollectorAdded })
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase mb-1.5">Phone</label>
+                <label htmlFor="collector-email" className="block text-xs font-medium text-gray-500 uppercase mb-1.5">Email</label>
                 <input
+                  id="collector-email"
+                  type="email"
+                  autoComplete="off"
+                  required
+                  placeholder="e.g. emmanuel@ecopulse.cm"
+                  value={formData.email}
+                  onChange={(e) => handleChange('email', e.target.value)}
+                  className="w-full px-3 py-2.5 border border-card-border rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">They sign in to the Collector app with this</p>
+              </div>
+              <div>
+                <label htmlFor="collector-phone" className="block text-xs font-medium text-gray-500 uppercase mb-1.5">
+                  Phone <span className="normal-case font-normal text-gray-400">(optional)</span>
+                </label>
+                <input
+                  id="collector-phone"
                   type="tel"
                   placeholder="e.g. 670 000 001"
                   value={formData.phone}
                   onChange={(e) => handleChange('phone', e.target.value)}
                   className="w-full px-3 py-2.5 border border-card-border rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
                 />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 uppercase mb-1.5">Login PIN</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    value={formData.pin}
-                    onChange={(e) => handleChange('pin', e.target.value.replace(/\D/g, ''))}
-                    className="w-full px-3 py-2.5 border border-card-border rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent font-mono tracking-widest"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleChange('pin', randomPin())}
-                    className="px-3 border border-card-border rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50"
-                  >
-                    New
-                  </button>
-                </div>
               </div>
             </div>
 

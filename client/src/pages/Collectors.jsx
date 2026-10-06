@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangle } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import AddCollectorModal from '../components/ui/AddCollectorModal';
 import AssignZoneModal from '../components/ui/AssignZoneModal';
@@ -81,9 +81,18 @@ export default function Collectors() {
               </Badge>
             </div>
 
-            <div className="flex gap-1.5 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-4">
               <span className="text-[10px] px-2 py-0.5 bg-green-50 text-accent rounded-full font-medium">Field Collector</span>
               <span className="text-[10px] px-2 py-0.5 bg-gray-100 text-gray-500 rounded-full">{collector.zone}</span>
+              {/* Collectors sign in with their email, so without one they can't use the app */}
+              {!collector.email && (
+                <span
+                  className="flex items-center gap-1 text-[10px] px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full font-medium"
+                  title="Can't sign in to the Collector app until an email is added"
+                >
+                  <AlertTriangle size={10} /> No email
+                </span>
+              )}
             </div>
 
             <div className="grid grid-cols-3 gap-3 mb-4">
