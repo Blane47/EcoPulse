@@ -1,14 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { createReport, getReportsByDevice, getAllReports, updateReportStatus } = require('../controllers/reportController');
-const { protect, authorize } = require('../middleware/auth');
+const {
+  createReport, getMyReports, getAllReports, updateReportStatus,
+  assignReport, getMyAssignedReports, markAssignedReportCollected,
+} = require('../controllers/reportController');
+const { protect, authorize, collectorOnly } = require('../middleware/auth');
+const { communityAuth } = require('../middleware/communityAuth');
 
-// Public — community can submit reports without auth
-router.post('/', createReport);
-router.get('/user/:deviceId', getReportsByDevice);
+// Residents (device token)
+router.post('/', communityAuth, createReport);
+router.get('/mine', communityAuth, getMyReports);
+
+// Collectors
+router.get('/assigned/me', protect, collectorOnly, getMyAssignedReports);
+router.patch('/:id/collected', protect, collectorOnly, markAssignedReportCollected);
 
 // Admin only
 router.get('/', protect, authorize('admin'), getAllReports);
+router.patch('/:id/assign', protect, authorize('admin'), assignReport);
 router.patch('/:id', protect, authorize('admin'), updateReportStatus);
 
 module.exports = router;

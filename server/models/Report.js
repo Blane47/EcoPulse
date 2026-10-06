@@ -9,14 +9,19 @@ const reportSchema = new mongoose.Schema({
   photo: { type: String, default: null },
   note: { type: String, default: '' },
   zone: { type: String, required: true },
-  status: { type: String, enum: ['pending', 'reviewed', 'collected'], default: 'pending' },
+  // pending → (reviewed) → assigned → collected
+  status: { type: String, enum: ['pending', 'reviewed', 'assigned', 'collected'], default: 'pending' },
   deviceId: { type: String, required: true },
   reporterName: { type: String, default: null },
   reporterPhone: { type: String, default: null },
   binId: { type: mongoose.Schema.Types.ObjectId, ref: 'Bin', default: null },
+  assignedCollector: { type: mongoose.Schema.Types.ObjectId, ref: 'Collector', default: null },
+  assignedAt: { type: Date, default: null },
+  collectedAt: { type: Date, default: null },
 }, { timestamps: true });
 
 reportSchema.index({ deviceId: 1 });
 reportSchema.index({ zone: 1, status: 1 });
+reportSchema.index({ assignedCollector: 1, status: 1 });
 
 module.exports = mongoose.model('Report', reportSchema);
