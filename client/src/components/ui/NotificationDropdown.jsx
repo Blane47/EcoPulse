@@ -27,9 +27,9 @@ export default function NotificationDropdown({ isOpen, onClose }) {
     try {
       const items = [];
 
-      // Fetch critical bins
-      // /bins is paginated and returns { bins, ... }; ask for the critical ones only
-      const { data: { bins: criticalBins } } = await api.get('/bins', { params: { status: 'critical', limit: 100 } });
+      // Fetch critical bins (/bins is paginated and returns { bins, ... })
+      const { data: { bins } } = await api.get('/bins', { params: { limit: 100 } });
+      const criticalBins = bins.filter(b => b.status === 'critical');
       criticalBins.forEach(bin => {
         items.push({
           id: `bin-${bin._id}`,
@@ -38,7 +38,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           color: 'text-red-500',
           bg: 'bg-red-50',
           title: `${bin.name || bin.binId} is critical`,
-          subtitle: `${bin.fillLevel || 90}% full — ${bin.zone || 'Unknown zone'}`,
+          subtitle: `${bin.fillLevel}% full — ${bin.zone || 'Unknown zone'}`,
           time: 'Now',
         });
       });
@@ -53,7 +53,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           color: 'text-orange-500',
           bg: 'bg-orange-50',
           title: `${bin.name || bin.binId} nearing capacity`,
-          subtitle: `${bin.fillLevel || 70}% full — ${bin.zone || 'Unknown zone'}`,
+          subtitle: `${bin.fillLevel}% full — ${bin.zone || 'Unknown zone'}`,
           time: 'Recently',
         });
       });
