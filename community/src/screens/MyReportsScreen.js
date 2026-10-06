@@ -61,10 +61,13 @@ export default function MyReportsScreen({ navigation, route }) {
     }, [fetchReports, fetchAnnouncements])
   );
 
+  const collectedCount = reports.filter((r) => r.status === 'collected').length;
+
   const statusConfig = {
     pending: { label: en ? 'Pending' : 'En attente', color: colors.warning },
     reviewed: { label: en ? 'Under Review' : 'En cours', color: '#3b82f6' },
     assigned: { label: en ? 'Collector Assigned' : 'Collecteur Assigné', color: '#8b5cf6' },
+    awaiting_review: { label: en ? 'Cleanup under review' : 'Nettoyage en vérification', color: '#d97706' },
     collected: { label: en ? 'Collected' : 'Collecté', color: colors.accent },
   };
 
@@ -142,12 +145,19 @@ export default function MyReportsScreen({ navigation, route }) {
             return (
               <View style={[styles.reportCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 {item.photo ? (
-                  <Image source={{ uri: item.photo }} style={styles.reportPhoto} />
+                  <Image source={{ uri: item.photo }} style={styles.reportPhoto} accessibilityLabel={en ? 'Your photo' : 'Votre photo'} />
                 ) : (
                   <View style={[styles.reportImagePlaceholder, { backgroundColor: colors.background }]}>
                     <CollectionIcon size={28} color={colors.textMuted} />
                   </View>
                 )}
+                {/* Collector's photo of the cleaned spot, shared once the municipality approved it */}
+                {item.proof?.photo ? (
+                  <View>
+                    <Image source={{ uri: item.proof.photo }} style={[styles.reportPhoto, styles.afterPhoto]} accessibilityLabel={en ? 'Cleaned spot' : 'Endroit nettoyé'} />
+                    <Text style={styles.afterLabel}>{en ? 'AFTER' : 'APRÈS'}</Text>
+                  </View>
+                ) : null}
                 <View style={styles.reportInfo}>
                   <Text style={[styles.reportLocation, { color: colors.text }]}>{item.location}</Text>
                   <Text style={[styles.reportDate, { color: colors.textSecondary }]}>{formatDate(item.createdAt)}</Text>
@@ -157,14 +167,14 @@ export default function MyReportsScreen({ navigation, route }) {
             );
           }}
           ListFooterComponent={
-            reports.length > 0 ? (
+            collectedCount > 0 ? (
               <View style={styles.impactCard}>
                 <View style={styles.impactOverlay}>
                   <CollectionIcon size={40} color="#fff" />
                   <Text style={styles.impactText}>
                     {en
-                      ? `Your reports helped collect ${reports.length} bins this month 🏆`
-                      : `Vos signalements ont aidé à collecter ${reports.length} bacs ce mois-ci 🏆`}
+                      ? `Your reports got ${collectedCount} ${collectedCount === 1 ? 'spot' : 'spots'} cleaned 🏆`
+                      : `Vos signalements ont permis de nettoyer ${collectedCount} ${collectedCount === 1 ? 'endroit' : 'endroits'} 🏆`}
                   </Text>
                 </View>
               </View>
@@ -355,6 +365,19 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 12,
+  },
+  afterPhoto: { borderWidth: 2, borderColor: '#22c55e' },
+  afterLabel: {
+    position: 'absolute',
+    bottom: 3,
+    alignSelf: 'center',
+    fontSize: 8,
+    fontWeight: '800',
+    color: '#fff',
+    backgroundColor: '#16a34a',
+    paddingHorizontal: 4,
+    borderRadius: 4,
+    overflow: 'hidden',
   },
   reportImagePlaceholder: {
     width: 56,
