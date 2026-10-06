@@ -123,7 +123,7 @@ exports.assignReport = async (req, res, next) => {
           recipient: previous,
           type: 'report_unassigned',
           title: 'Report reassigned',
-          body: `${report.location} is no longer assigned to you`,
+          body: report.location,
           report: report._id,
         });
       }
