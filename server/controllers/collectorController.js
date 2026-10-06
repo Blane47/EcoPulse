@@ -1,6 +1,8 @@
 const Collector = require('../models/Collector');
 const Bin = require('../models/Bin');
 const { normalizePhone } = require('../utils/phone');
+const { normalizeEmail, isValidEmail } = require('../utils/email');
+const { tempPassword } = require('../utils/tempPassword');
 
 exports.getAllCollectors = async (req, res, next) => {
   try {
@@ -27,38 +29,41 @@ exports.getCollectorById = async (req, res, next) => {
   }
 };
 
-const PIN_FORMAT = /^\d{6}$/;
+// Fields an admin may set on a collector; credentials go through the dedicated paths below
+const EDITABLE = ['name', 'email', 'phone', 'truck', 'zone', 'role', 'status', 'avatar', 'binsAssigned'];
+const pick = (body) => Object.fromEntries(EDITABLE.filter((k) => body[k] !== undefined).map((k) => [k, body[k]]));
 
+const duplicateMessage = (error) =>
+  error.keyPattern?.email ? 'A collector with this email already exists' : 'A collector with this phone number already exists';
+
+// Admin adds a collector. They sign in with their email and a temporary password,
+// returned once here, which the Collector app makes them change.
 exports.createCollector = async (req, res, next) => {
   try {
-    if (req.body.pin !== undefined && !PIN_FORMAT.test(String(req.body.pin))) {
-      return res.status(400).json({ message: 'PIN must be exactly 6 digits' });
-    }
-    // Phone is normalised and the PIN hashed by the model's hooks
-    const collector = await Collector.create(req.body);
-    const created = collector.toObject();
-    delete created.pin;
-    res.status(201).json(created);
+    const email = normalizeEmail(req.body.email);
+    if (!isValidEmail(email)) return res.status(400).json({ message: 'Enter a valid email address' });
+
+    const temporaryPassword = tempPassword();
+    const collector = await Collector.create({ ...pick(req.body), email, password: temporaryPassword, mustChangePassword: true });
+    res.status(201).json({ collector, temporaryPassword });
   } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: duplicateMessage(error) });
     next(error);
   }
 };
 
 exports.updateCollector = async (req, res, next) => {
   try {
-    // findByIdAndUpdate skips document hooks, so normalise and hash here
-    const updates = { ...req.body };
-    delete updates._id;
+    // findByIdAndUpdate skips document hooks, so normalise here
+    const updates = pick(req.body);
     if (updates.phone !== undefined && updates.phone !== '') {
       const phone = normalizePhone(updates.phone);
       if (!phone) return res.status(400).json({ message: 'Enter a valid phone number' });
       updates.phone = phone;
     }
-    if (updates.pin !== undefined) {
-      if (!PIN_FORMAT.test(String(updates.pin))) {
-        return res.status(400).json({ message: 'PIN must be exactly 6 digits' });
-      }
-      updates.pin = await Collector.hashPin(updates.pin);
+    if (updates.email !== undefined) {
+      updates.email = normalizeEmail(updates.email);
+      if (!isValidEmail(updates.email)) return res.status(400).json({ message: 'Enter a valid email address' });
     }
 
     const collector = await Collector.findByIdAndUpdate(req.params.id, updates, {
@@ -67,6 +72,26 @@ exports.updateCollector = async (req, res, next) => {
     });
     if (!collector) return res.status(404).json({ message: 'Collector not found' });
     res.json(collector);
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ message: duplicateMessage(error) });
+    next(error);
+  }
+};
+
+// Admin issues a new temporary password (forgotten password, or first sign-in for a
+// collector who never had one). Returned once; the app makes the collector change it.
+exports.resetCollectorPassword = async (req, res, next) => {
+  try {
+    const collector = await Collector.findById(req.params.id);
+    if (!collector) return res.status(404).json({ message: 'Collector not found' });
+    if (!collector.email) {
+      return res.status(400).json({ message: 'Add an email for this collector first — it is how they sign in' });
+    }
+    const temporaryPassword = tempPassword();
+    collector.password = temporaryPassword;
+    collector.mustChangePassword = true;
+    await collector.save();
+    res.json({ email: collector.email, temporaryPassword });
   } catch (error) {
     next(error);
   }

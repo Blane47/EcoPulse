@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Collector = require('../models/Collector');
-const { normalizePhone } = require('../utils/phone');
+const { normalizeEmail } = require('../utils/email');
 const { isCollector } = require('../middleware/auth');
 
 const generateToken = (id) => {
@@ -83,9 +83,6 @@ exports.updateProfile = async (req, res, next) => {
 
 exports.changePassword = async (req, res, next) => {
   try {
-    if (isCollector(req.user)) {
-      return res.status(403).json({ message: 'Collectors sign in with a PIN set by an admin' });
-    }
     const { currentPassword, newPassword } = req.body;
     if (!currentPassword || !newPassword) {
       return res.status(400).json({ message: 'Please provide current and new password' });
@@ -94,13 +91,20 @@ exports.changePassword = async (req, res, next) => {
       return res.status(400).json({ message: 'New password must be at least 6 characters' });
     }
 
-    const user = await User.findById(req.user._id);
+    // Collectors (incl. replacing a temporary password) and dashboard users share this endpoint
+    const user = isCollector(req.user)
+      ? await Collector.findById(req.user._id).select('+password')
+      : await User.findById(req.user._id);
     if (!(await user.comparePassword(currentPassword))) {
       // 400, not 401: the dashboard treats any 401 as an expired session and signs the user out
       return res.status(400).json({ message: 'Current password is incorrect' });
     }
 
+    if (newPassword === currentPassword) {
+      return res.status(400).json({ message: 'Choose a password different from the current one' });
+    }
     user.password = newPassword; // hashed by the model's pre-save hook
+    if (isCollector(req.user)) user.mustChangePassword = false;
     await user.save();
     res.json({ message: 'Password updated' });
   } catch (error) {
@@ -110,15 +114,16 @@ exports.changePassword = async (req, res, next) => {
 
 exports.collectorLogin = async (req, res, next) => {
   try {
-    const { phone, pin } = req.body;
-    if (!phone || !pin) {
-      return res.status(400).json({ message: 'Please provide phone and PIN' });
+    const email = normalizeEmail(req.body?.email);
+    const { password } = req.body || {};
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Please enter your email and password' });
     }
 
-    const normalized = normalizePhone(phone);
-    const collector = normalized && await Collector.findOne({ phone: normalized }).select('+pin');
-    if (!collector || !(await collector.comparePin(pin))) {
-      return res.status(401).json({ message: 'Invalid phone or PIN' });
+    const collector = await Collector.findOne({ email }).select('+password');
+    // Same message whether the email or the password is wrong
+    if (!collector || !(await collector.comparePassword(password))) {
+      return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     if (collector.status === 'inactive') {
@@ -126,9 +131,7 @@ exports.collectorLogin = async (req, res, next) => {
     }
 
     const token = generateToken(collector._id);
-    const user = collector.toObject();
-    delete user.pin;
-    res.json({ user, token });
+    res.json({ user: collector, token });
   } catch (error) {
     next(error);
   }

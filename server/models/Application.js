@@ -4,6 +4,8 @@ const { normalizePhone } = require('../utils/phone');
 const applicationSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, required: true },
+  // Becomes the collector's sign-in email when the application is approved
+  email: { type: String, lowercase: true, trim: true, default: '' },
   zone: { type: String, required: true },
   hasLicense: { type: Boolean, default: false },
   motivation: { type: String, default: '' },

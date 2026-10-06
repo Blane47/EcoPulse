@@ -1,6 +1,7 @@
 // One-off data migration for databases created by older versions of EcoPulse:
 //   - normalises phone numbers to +237XXXXXXXXX (and the community chat ids built from them)
-//   - bcrypt-hashes collector PINs stored in plain text
+//   - removes collector PINs left over from the old phone + PIN sign-in (collectors now use
+//     email + password) and lists collectors who still need an email
 //   - recomputes bin status from fill level (older seeds skipped the model hook)
 //
 //   node scripts/migrate.js           # dry run: prints what would change
@@ -11,12 +12,10 @@
 // Uses MONGODB_URI from the environment / server/.env.
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 const { normalizePhone } = require('../utils/phone');
 const Bin = require('../models/Bin');
 
 const APPLY = process.argv.includes('--apply');
-const BCRYPT_HASH = /^\$2[aby]\$\d{2}\$/;
 const COMMUNITY_PREFIX = 'community_';
 
 async function normalizeField(db, collectionName, field, { unique = false } = {}) {
@@ -66,17 +65,24 @@ async function migrateCommunityChats(db) {
   return changed;
 }
 
-async function hashPins(db) {
+async function retirePins(db) {
   const col = db.collection('collectors');
-  const docs = await col.find({ pin: { $type: 'string' } }, { projection: { pin: 1, name: 1 } }).toArray();
-  let changed = 0;
-  for (const doc of docs) {
-    if (BCRYPT_HASH.test(doc.pin)) continue;
-    changed++;
-    console.log(`  collectors.pin: hashing PIN for ${doc.name} (${doc._id})`);
-    if (APPLY) await col.updateOne({ _id: doc._id }, { $set: { pin: await bcrypt.hash(doc.pin, 10) } });
+  const docs = await col.find({ pin: { $exists: true } }, { projection: { name: 1 } }).toArray();
+  for (const doc of docs) console.log(`  collectors.pin: removing old PIN for ${doc.name} (${doc._id})`);
+  if (APPLY && docs.length) await col.updateMany({ pin: { $exists: true } }, { $unset: { pin: '' } });
+  return docs.length;
+}
+
+// Report only: collectors can't sign in until an admin adds their email in the dashboard
+async function listCollectorsWithoutEmail(db) {
+  const docs = await db.collection('collectors')
+    .find({ $or: [{ email: { $exists: false } }, { email: null }, { email: '' }] }, { projection: { name: 1 } })
+    .toArray();
+  if (docs.length) {
+    console.log(`\n  ! ${docs.length} collector(s) have no email and can't sign in yet — add one in the dashboard,`);
+    console.log('    then use Reset password to give them a temporary password:');
+    for (const doc of docs) console.log(`      - ${doc.name} (${doc._id})`);
   }
-  return changed;
 }
 
 async function fixBinStatuses(db) {
@@ -105,8 +111,9 @@ async function fixBinStatuses(db) {
   total += await normalizeField(db, 'reports', 'reporterPhone');
   total += await normalizeField(db, 'reports', 'deviceId'); // older app versions stored the phone here
   total += await migrateCommunityChats(db);
-  total += await hashPins(db);
+  total += await retirePins(db);
   total += await fixBinStatuses(db);
+  await listCollectorsWithoutEmail(db);
 
   console.log(`\n${total} change(s) ${APPLY ? 'applied' : 'would be applied — rerun with --apply to write them'}`);
   await mongoose.disconnect();

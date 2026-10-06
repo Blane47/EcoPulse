@@ -1,26 +1,32 @@
 const express = require('express');
-const crypto = require('crypto');
 const router = express.Router();
 const Application = require('../models/Application');
 const Collector = require('../models/Collector');
 const { protect, authorize } = require('../middleware/auth');
 const { normalizePhone } = require('../utils/phone');
+const { normalizeEmail, isValidEmail } = require('../utils/email');
+const { tempPassword } = require('../utils/tempPassword');
 
 // POST — community user submits application (public)
 router.post('/', async (req, res) => {
   try {
     const { name, zone, hasLicense, motivation } = req.body;
     const phone = normalizePhone(req.body.phone);
-    if (!name || !req.body.phone || !zone) {
-      return res.status(400).json({ message: 'Name, phone, and zone are required' });
+    const email = normalizeEmail(req.body.email);
+    if (!name || !req.body.phone || !zone || !email) {
+      return res.status(400).json({ message: 'Name, phone, email and zone are required' });
     }
     if (!phone) return res.status(400).json({ message: 'Enter a valid phone number' });
-    // Check if already applied
-    const existing = await Application.findOne({ phone, status: 'pending' });
+    if (!isValidEmail(email)) return res.status(400).json({ message: 'Enter a valid email address' });
+    // Check if already applied, or already a collector
+    const existing = await Application.findOne({ status: 'pending', $or: [{ phone }, { email }] });
     if (existing) {
       return res.status(400).json({ message: 'You already have a pending application' });
     }
-    const application = await Application.create({ name, phone, zone, hasLicense, motivation });
+    if (await Collector.exists({ email })) {
+      return res.status(400).json({ message: 'This email is already used by a collector account' });
+    }
+    const application = await Application.create({ name, phone, email, zone, hasLicense, motivation });
     res.status(201).json(application);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -66,33 +72,43 @@ router.put('/:id', protect, authorize('admin'), async (req, res) => {
   }
 });
 
-// POST — approve and create the collector account (admin only).
-// Returns the login PIN once, in plain text, so the admin can give it to the new collector.
+// POST — approve and create the collector account (admin only). The collector signs in with the
+// application's email (or body.email for older applications without one) and a temporary password,
+// returned once so the admin can give it to them; the Collector app makes them change it.
 router.post('/:id/create-collector', protect, authorize('admin'), async (req, res) => {
   try {
     const app = await Application.findById(req.params.id);
     if (!app) return res.status(404).json({ message: 'Application not found' });
     if (app.collector) return res.status(400).json({ message: 'A collector account already exists for this application' });
 
-    const existing = await Collector.findOne({ phone: app.phone });
-    if (existing) return res.status(409).json({ message: 'A collector with this phone number already exists' });
+    const email = normalizeEmail(app.email || req.body.email);
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: 'This application has no email. Enter the email the collector will sign in with.' });
+    }
+    if (await Collector.exists({ phone: app.phone })) {
+      return res.status(409).json({ message: 'A collector with this phone number already exists' });
+    }
+    if (await Collector.exists({ email })) {
+      return res.status(409).json({ message: 'A collector with this email already exists' });
+    }
 
-    const pin = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const temporaryPassword = tempPassword();
     const collector = await Collector.create({
       name: app.name,
       phone: app.phone,
+      email,
       zone: app.zone,
-      pin,
+      password: temporaryPassword,
+      mustChangePassword: true,
       truck: req.body.truck || '',
     });
 
     app.status = 'approved';
+    app.email = email;
     app.collector = collector._id;
     await app.save();
 
-    const created = collector.toObject();
-    delete created.pin;
-    res.status(201).json({ application: app, collector: created, pin });
+    res.status(201).json({ application: app, collector, temporaryPassword });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
