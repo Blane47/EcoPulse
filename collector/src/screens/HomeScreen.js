@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl, Image, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -9,12 +9,14 @@ import { useNotifications } from '../context/NotificationContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
 import { BellIcon, MapPinIcon, CheckIcon, ClockIcon } from '../components/Icons';
+import { opensLeave } from '../utils/notificationTitle';
+import { currentLeave, addDays, formatDay } from '../utils/leave';
 import api from '../api/axios';
 
 const truckBanner = require('../assets/images/truck-banner.png');
 
 export default function HomeScreen({ navigation }) {
-  const { user, language } = useAuth();
+  const { user, language, updateUser } = useAuth();
   const en = language === 'en';
   const { unread, notifications } = useNotifications();
   const [stats, setStats] = useState({ assigned: 0, collected: 0, remaining: 0 });
@@ -22,6 +24,9 @@ export default function HomeScreen({ navigation }) {
   const [assignedReports, setAssignedReports] = useState([]);
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [backOn, setBackOn] = useState(null); // first working day after the current leave
+  const userRef = useRef(user);
+  userRef.current = user;
 
   const fetchData = useCallback(async () => {
     try {
@@ -53,9 +58,33 @@ export default function HomeScreen({ navigation }) {
     if (latestNotificationId) fetchData();
   }, [fetchData, latestNotificationId]);
 
+  // Only while on leave: look up the return day for the banner (keeps Home light otherwise)
+  const onLeave = user?.status === 'on-leave';
+  const fetchLeave = useCallback(async () => {
+    if (!onLeave) { setBackOn(null); return; }
+    try {
+      const { data } = await api.get('/leave/mine');
+      const now = currentLeave(data.leaves || [], data.today);
+      setBackOn(now ? addDays(now.endDate, 1) : null);
+    } catch {
+      // Offline: the banner just leaves out the date
+    }
+  }, [onLeave]);
+  useFocusEffect(useCallback(() => { fetchLeave(); }, [fetchLeave]));
+
+  // An admin approving or ending leave can change the collector's status straight away
+  const latestLeaveNotificationId = notifications.find(opensLeave)?._id;
+  useEffect(() => {
+    if (!latestLeaveNotificationId) return;
+    api.get('/auth/me').then(({ data }) => {
+      const u = userRef.current;
+      if (u && data?.status && data.status !== u.status) updateUser({ ...u, status: data.status });
+    }).catch(() => {});
+  }, [latestLeaveNotificationId, updateUser]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchData();
+    await Promise.all([fetchData(), fetchLeave()]);
     setRefreshing(false);
   };
 
@@ -99,7 +128,7 @@ export default function HomeScreen({ navigation }) {
             >
               <View style={styles.tealHeaderRow}>
                 <GradientBrand fontSize={20} />
-                <TouchableOpacity style={styles.tealNotif} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.tealNotif} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Notifications">
                   <BellIcon size={20} color="#F59E0B" />
                   {unread > 0 && (
                     <View style={styles.badge}>
@@ -127,17 +156,27 @@ export default function HomeScreen({ navigation }) {
 
             {/* On Leave Banner */}
             {user?.status === 'on-leave' && (
-              <View style={styles.onLeaveBanner}>
+              <TouchableOpacity
+                style={styles.onLeaveBanner}
+                onPress={() => navigation.navigate('Leave')}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+              >
                 <Text style={{ fontSize: 18 }}>🏖️</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.onLeaveTitle}>{en ? 'You are currently on leave' : 'Vous êtes actuellement en congé'}</Text>
                   <Text style={styles.onLeaveSub}>
-                    {en
-                      ? 'Collection actions are disabled. Contact your supervisor to resume duty.'
-                      : 'Les collectes sont désactivées. Contactez votre superviseur pour reprendre le service.'}
+                    {backOn
+                      ? (en
+                        ? `Back on ${formatDay(backOn, en)}. Collection actions are disabled until then.`
+                        : `Retour le ${formatDay(backOn, en)}. Les collectes sont désactivées d’ici là.`)
+                      : (en
+                        ? 'Collection actions are disabled. Contact your supervisor to resume duty.'
+                        : 'Les collectes sont désactivées. Contactez votre superviseur pour reprendre le service.')}
                   </Text>
+                  <Text style={styles.onLeaveLink}>{en ? 'See my leave ›' : 'Voir mes congés ›'}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             )}
 
             {/* Duty Banner — Liquid Glass */}
@@ -422,6 +461,7 @@ const styles = StyleSheet.create({
   },
   onLeaveTitle: { fontSize: 14, fontWeight: '700', color: '#92400e' },
   onLeaveSub: { fontSize: 11, color: '#a16207', marginTop: 2, lineHeight: 16 },
+  onLeaveLink: { fontSize: 13, fontWeight: '700', color: '#92400e', marginTop: 6 },
 
   // Banner — Liquid Glass
   bannerContainer: { paddingHorizontal: 20, marginBottom: 20 },

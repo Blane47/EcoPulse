@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Animated, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { notificationTitle, opensReport } from '../utils/notificationTitle';
+import { notificationTitle, opensReport, opensLeave } from '../utils/notificationTitle';
 import { navigate } from '../navigation/navigationRef';
 import { BellIcon } from './Icons';
 
@@ -32,6 +32,7 @@ export default function NotificationBanner() {
     markRead(banner._id);
     hide();
     if (opensReport(banner)) navigate('AssignedReport', { id: banner.report });
+    else if (opensLeave(banner)) navigate('Leave');
     else navigate('Notifications');
   };
 

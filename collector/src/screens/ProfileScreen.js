@@ -236,6 +236,10 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.contactText}>{en ? 'Chat with Admin' : "Discuter avec l'admin"}</Text>
         </TouchableOpacity>
 
+        <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Leave')}>
+          <Text style={styles.contactText}>{en ? 'Request leave' : 'Demander un congé'}</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('ChangePassword')}>
           <Text style={styles.contactText}>{en ? 'Change password' : 'Modifier le mot de passe'}</Text>
         </TouchableOpacity>

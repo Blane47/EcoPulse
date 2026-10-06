@@ -28,7 +28,8 @@ flowchart LR
 **Admin dashboard**
 - Live map of every bin in Buea, coloured by fill status (OpenStreetMap + Leaflet)
 - Community reports with photo, GPS location and note; **assign a report to a collector** (collectors in the report's zone are suggested first), reassign or unassign
-- Collector management: create accounts with an email and a temporary password, reset forgotten passwords, assign zones, view performance
+- Collector management: create accounts with an email and a temporary password, reset forgotten passwords, assign zones and trucks, view performance
+- Leave requests: approve or decline, see who else in the zone is off, end leave early
 - Review residents' applications to become collectors (they give the email they'll sign in with), and create the account in one step
 - Chat with collectors and residents; zone-wide announcements
 - Works on desktop, tablet and phone (sidebar becomes a slide-out menu below 1024px)
@@ -46,7 +47,8 @@ flowchart LR
 **Collector app (English / French)**
 - Today's route with priority bins, turn-by-turn navigation, photo-verified collection
 - **In-app notifications** when the admin assigns a report, with a banner and sound
-- Assigned reports with the resident's photo and note, and a *Mark Collected* action
+- Assigned reports with the resident's photo and note; close them with a proof photo the admin approves
+- Request leave from a calendar; the app switches to *On leave* on the first day and back afterwards
 - Chat with the admin, profile with collection statistics
 
 <p>

@@ -16,6 +16,7 @@ import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import AssignedReportScreen from '../screens/AssignedReportScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import LeaveScreen from '../screens/LeaveScreen';
 import NotificationBanner from '../components/NotificationBanner';
 import { navigationRef } from './navigationRef';
 
@@ -125,6 +126,7 @@ export default function AppNavigator() {
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ ...detailHeader, title: 'Notifications' }} />
             <Stack.Screen name="AssignedReport" component={AssignedReportScreen} options={{ ...detailHeader, title: en ? 'Assigned Report' : 'Signalement assigné' }} />
             <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ ...detailHeader, title: en ? 'Password' : 'Mot de passe' }} />
+            <Stack.Screen name="Leave" component={LeaveScreen} options={{ ...detailHeader, title: en ? 'Leave' : 'Congé' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

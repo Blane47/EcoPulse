@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { notificationTitle, opensReport } from '../utils/notificationTitle';
+import { notificationTitle, opensReport, opensLeave } from '../utils/notificationTitle';
 import { colors, gradients, shadows } from '../theme';
 import { BellIcon } from '../components/Icons';
 
@@ -32,7 +32,7 @@ export default function NotificationsScreen({ navigation }) {
       headerRight: () =>
         unread > 0 ? (
           <TouchableOpacity onPress={markAllRead}>
-            <Text style={styles.markAll}>{en ? 'Mark all read' : 'Tout marquer comme lu'}</Text>
+            <Text style={styles.markAll}>{en ? 'Mark all read' : 'Tout lire'}</Text>
           </TouchableOpacity>
         ) : null,
     });
@@ -48,6 +48,8 @@ export default function NotificationsScreen({ navigation }) {
     if (!item.read) markRead(item._id);
     if (opensReport(item)) {
       navigation.navigate('AssignedReport', { id: item.report });
+    } else if (opensLeave(item)) {
+      navigation.navigate('Leave');
     }
   };
 
@@ -64,8 +66,8 @@ export default function NotificationsScreen({ navigation }) {
             <Text style={styles.emptyTitle}>{en ? 'No notifications yet' : 'Aucune notification pour le moment'}</Text>
             <Text style={styles.emptyText}>
               {en
-                ? 'Reports assigned to you by the admin will appear here.'
-                : "Les signalements que l'admin vous assigne apparaîtront ici."}
+                ? 'Reports the admin assigns to you, and answers to your leave requests, will appear here.'
+                : "Les signalements que l'admin vous assigne et les réponses à vos demandes de congé apparaîtront ici."}
             </Text>
           </View>
         }
