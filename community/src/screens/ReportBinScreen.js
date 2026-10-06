@@ -7,6 +7,7 @@ import { colors } from '../theme';
 import api from '../api/axios';
 import { MapPinIcon, CameraIcon, ArrowLeftIcon, CheckIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
+import { shrinkPhoto } from '../utils/shrinkPhoto';
 import { playSuccess } from '../utils/sounds';
 
 export default function ReportBinScreen({ navigation }) {
@@ -49,12 +50,15 @@ export default function ReportBinScreen({ navigation }) {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      quality: 0.6,
-      base64: true,
+      quality: 0.8,
       allowsEditing: false,
     });
-    if (!result.canceled && result.assets?.[0]) {
-      setPhoto(result.assets[0]);
+    if (result.canceled || !result.assets?.[0]) return;
+    try {
+      // { uri, dataUrl } of a downsized copy, so the upload is small
+      setPhoto(await shrinkPhoto(result.assets[0]));
+    } catch {
+      Alert.alert(en ? 'Photo problem' : 'Problème de photo', en ? 'Could not process the photo. Please try again.' : 'Impossible de traiter la photo. Veuillez réessayer.');
     }
   };
 
@@ -75,7 +79,7 @@ export default function ReportBinScreen({ navigation }) {
         note,
         coordinates: coords,
         zone,
-        photo: photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : null,
+        photo: photo.dataUrl,
       });
       setSubmitted(true);
       playSuccess();

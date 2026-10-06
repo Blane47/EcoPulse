@@ -8,6 +8,7 @@ import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
 import { MapPinIcon, CheckIcon, CameraIcon, ClockIcon } from '../components/Icons';
 import { playSuccess } from '../utils/sounds';
+import { shrinkPhoto } from '../utils/shrinkPhoto';
 import api from '../api/axios';
 
 const STATUS_STYLE = {
@@ -81,8 +82,15 @@ export default function AssignedReportScreen({ route }) {
     // Get the GPS fix while the collector is taking the photo
     const locationPromise = getProofLocation();
     try {
-      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.5, base64: true });
-      if (result.canceled || !result.assets?.[0]?.base64) return;
+      const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
+      if (result.canceled || !result.assets?.[0]) return;
+      let shrunk;
+      try {
+        shrunk = await shrinkPhoto(result.assets[0]);
+      } catch {
+        Alert.alert(en ? 'Photo problem' : 'Problème de photo', en ? 'Could not process the photo. Please try again.' : 'Impossible de traiter la photo. Veuillez réessayer.');
+        return;
+      }
       const coords = await locationPromise;
       if (!coords) {
         Alert.alert(
@@ -92,8 +100,8 @@ export default function AssignedReportScreen({ route }) {
         return;
       }
       setDraft({
-        uri: result.assets[0].uri,
-        photo: `data:image/jpeg;base64,${result.assets[0].base64}`,
+        uri: shrunk.uri,
+        photo: shrunk.dataUrl,
         lat: coords.latitude,
         lng: coords.longitude,
       });

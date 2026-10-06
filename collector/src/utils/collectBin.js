@@ -3,6 +3,7 @@ import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../api/axios';
+import { shrinkPhoto } from './shrinkPhoto';
 
 // This module is not a component, so it reads the language straight from storage
 async function isEnglish() {
@@ -134,8 +135,7 @@ export async function verifiedCollect(bin) {
 
   const result = await ImagePicker.launchCameraAsync({
     mediaTypes: ['images'],
-    quality: 0.6,
-    base64: true,
+    quality: 0.8,
     allowsEditing: false,
   });
 
@@ -143,10 +143,14 @@ export async function verifiedCollect(bin) {
     return { success: false, message: 'Photo cancelled' };
   }
 
-  const photoUri = result.assets[0].uri;
-  const photoBase64 = result.assets[0].base64
-    ? `data:image/jpeg;base64,${result.assets[0].base64}`
-    : null;
+  let photoUri;
+  let photoBase64;
+  try {
+    ({ uri: photoUri, dataUrl: photoBase64 } = await shrinkPhoto(result.assets[0]));
+  } catch {
+    Alert.alert(en ? 'Photo problem' : 'Problème de photo', en ? 'Could not process the photo. Please try again.' : 'Impossible de traiter la photo. Veuillez réessayer.');
+    return { success: false, message: 'Photo processing failed' };
+  }
 
   // Step 5: Send to server with GPS + photo
   try {

@@ -8,6 +8,7 @@ import { colors, gradients, shadows } from '../theme';
 import { CameraIcon, LogoutIcon } from '../components/Icons';
 import api from '../api/axios';
 import TealHeader from '../components/TealHeader';
+import { shrinkPhoto } from '../utils/shrinkPhoto';
 
 function PerformanceCircle({ percentage = 0, size = 80, strokeWidth = 8 }) {
   const radius = (size - strokeWidth) / 2;
@@ -77,13 +78,18 @@ export default function ProfileScreen({ navigation }) {
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.6,
-      base64: true,
+      quality: 0.8,
     });
 
     if (result.canceled) return;
 
-    const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+    let base64;
+    try {
+      base64 = (await shrinkPhoto(result.assets[0], 512)).dataUrl;
+    } catch {
+      Alert.alert(en ? 'Photo problem' : 'Problème de photo', en ? 'Could not process the photo. Please try again.' : 'Impossible de traiter la photo. Veuillez réessayer.');
+      return;
+    }
     setUploading(true);
     try {
       await api.put('/collectors/me/avatar', { avatar: base64 }, { timeout: 30000 });
