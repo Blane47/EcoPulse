@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
+  // Dark theme is driven by a class on <html> (see Settings and index.css)
+  darkMode: 'class',
   theme: {
     extend: {
       fontFamily: {

@@ -8,6 +8,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <title>EcoPulse — Smart Waste Management</title>
+    <script>
+      // Apply the saved theme before first paint so dark mode doesn't flash white
+      try {
+        if (localStorage.getItem('darkMode') === 'true') document.documentElement.classList.add('dark');
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

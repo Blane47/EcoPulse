@@ -157,22 +157,23 @@ export default function MapView() {
 
       {/* Zone Overview Panel */}
       <div className="bg-white border-t md:border-t-0 md:border-l border-gray-200 p-5 md:w-[300px] md:shrink-0 md:overflow-y-auto">
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#111827', marginBottom: 4 }}>Zone Overview</h2>
-        <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>Real-time municipality health</p>
+        {/* Tailwind classes (not inline colours) so the dark theme applies */}
+        <h2 className="text-sm font-bold text-gray-900 mb-1">Zone Overview</h2>
+        <p className="text-xs text-gray-400 mb-5">Real-time municipality health</p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="flex flex-col gap-4">
           {zoneOverview.map((zone) => (
-            <div key={zone.name} style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 16 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827' }}>{zone.name}</h3>
+            <div key={zone.name} className="border border-gray-200 rounded-xl p-4">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-semibold text-gray-900">{zone.name}</h3>
                 <Badge variant={statusVariant(zone.status)}>{zone.alertCount} Alerts</Badge>
               </div>
-              <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>Total Bins: {zone.totalBins}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ flex: 1, backgroundColor: '#f3f4f6', borderRadius: 999, height: 8, overflow: 'hidden' }}>
-                  <div style={{ height: 8, borderRadius: 999, backgroundColor: '#22c55e', width: `${zone.efficiency}%` }} />
+              <p className="text-xs text-gray-500 mb-2">Total Bins: {zone.totalBins}</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div className="h-2 rounded-full bg-accent" style={{ width: `${zone.efficiency}%` }} />
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{zone.efficiency}%</span>
+                <span className="text-xs font-semibold text-gray-700">{zone.efficiency}%</span>
               </div>
             </div>
           ))}
