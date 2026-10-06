@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl } fr
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNotifications } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
-import { notificationTitle } from '../utils/notificationTitle';
+import { notificationTitle, opensReport } from '../utils/notificationTitle';
 import { colors, gradients, shadows } from '../theme';
 import { BellIcon } from '../components/Icons';
 
