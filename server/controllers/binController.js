@@ -1,6 +1,7 @@
 const Bin = require('../models/Bin');
 const { isCollector } = require('../middleware/auth');
 const { escapeRegex } = require('../utils/escapeRegex');
+const { getDistanceMeters } = require('../utils/geo');
 
 exports.getAllBins = async (req, res, next) => {
   try {
@@ -129,18 +130,6 @@ exports.collectBin = async (req, res, next) => {
   }
 };
 
-// Haversine formula — returns distance in meters between two lat/lng points
-function getDistanceMeters(lat1, lng1, lat2, lng2) {
-  const R = 6371000;
-  const toRad = (deg) => (deg * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLng = toRad(lng2 - lng1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 exports.getStats = async (req, res, next) => {
   try {
