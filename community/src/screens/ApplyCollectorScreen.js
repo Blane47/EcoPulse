@@ -6,6 +6,7 @@ import { CheckIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
 import api from '../api/axios';
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const ZONES = ['Molyko', 'Great Soppo', 'Bonduma', 'Buea Town'];
 
 export default function ApplyCollectorScreen({ navigation }) {
@@ -13,6 +14,7 @@ export default function ApplyCollectorScreen({ navigation }) {
   const en = language === 'en';
   const [name, setName] = useState(profile?.name || '');
   const [phone, setPhone] = useState(profile?.phone || '');
+  const [email, setEmail] = useState('');
   const [zone, setZone] = useState('');
   const [hasLicense, setHasLicense] = useState(false);
   const [motivation, setMotivation] = useState('');
@@ -20,8 +22,12 @@ export default function ApplyCollectorScreen({ navigation }) {
   const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !phone.trim() || !zone) {
-      Alert.alert(en ? 'Missing fields' : 'Champs manquants', en ? 'Please fill in name, phone, and select a zone.' : 'Veuillez remplir le nom, le téléphone et sélectionner une zone.');
+    if (!name.trim() || !phone.trim() || !email.trim() || !zone) {
+      Alert.alert(en ? 'Missing fields' : 'Champs manquants', en ? 'Please fill in name, phone, email and select a zone.' : 'Veuillez remplir le nom, le téléphone, l\'email et sélectionner une zone.');
+      return;
+    }
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      Alert.alert(en ? 'Check your email' : 'Vérifiez votre email', en ? 'Enter a valid email address, e.g. name@gmail.com.' : 'Saisissez une adresse email valide, ex. nom@gmail.com.');
       return;
     }
     setSubmitting(true);
@@ -29,6 +35,7 @@ export default function ApplyCollectorScreen({ navigation }) {
       await api.post('/applications', {
         name: name.trim(),
         phone: phone.trim(),
+        email: email.trim(),
         zone,
         hasLicense,
         motivation: motivation.trim(),
@@ -91,6 +98,25 @@ export default function ApplyCollectorScreen({ navigation }) {
           keyboardType="phone-pad"
         />
 
+        {/* Email — becomes their sign-in for the Collector app if approved */}
+        <Text style={styles.label}>EMAIL</Text>
+        <TextInput
+          style={[styles.input, { backgroundColor: colors.card, borderColor: colors.cardBorder, color: colors.text }]}
+          value={email}
+          onChangeText={setEmail}
+          placeholder={en ? 'e.g. name@gmail.com' : 'ex. nom@gmail.com'}
+          placeholderTextColor={colors.textMuted}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+        />
+        <Text style={styles.fieldHint}>
+          {en
+            ? 'If you are accepted, you will sign in to the EcoPulse Collector app with this email.'
+            : 'Si vous êtes accepté, vous vous connecterez à l\'application Collecteur EcoPulse avec cet email.'}
+        </Text>
+
         {/* Zone Preference */}
         <Text style={styles.label}>{en ? 'PREFERRED ZONE' : 'ZONE PRÉFÉRÉE'}</Text>
         <View style={styles.zoneGrid}>
@@ -145,9 +171,9 @@ export default function ApplyCollectorScreen({ navigation }) {
 
         {/* Submit */}
         <TouchableOpacity
-          style={[styles.submitBtn, (!name.trim() || !phone.trim() || !zone || submitting) && { opacity: 0.5 }]}
+          style={[styles.submitBtn, (!name.trim() || !phone.trim() || !email.trim() || !zone || submitting) && { opacity: 0.5 }]}
           onPress={handleSubmit}
-          disabled={!name.trim() || !phone.trim() || !zone || submitting}
+          disabled={!name.trim() || !phone.trim() || !email.trim() || !zone || submitting}
           activeOpacity={0.8}
         >
           <Text style={styles.submitBtnText}>
@@ -161,6 +187,12 @@ export default function ApplyCollectorScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  fieldHint: {
+    fontSize: 11,
+    color: colors.textMuted,
+    marginTop: 6,
+    lineHeight: 15,
+  },
   label: {
     fontSize: 10,
     fontWeight: '700',
