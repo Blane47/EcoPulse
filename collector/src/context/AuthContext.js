@@ -9,6 +9,9 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
+  // Temporary password just used to sign in, kept in memory (never stored) so the
+  // forced password change doesn't ask for it again
+  const [tempPassword, setTempPassword] = useState(null);
 
   useEffect(() => {
     const loadAuth = async () => {
@@ -32,8 +35,13 @@ export function AuthProvider({ children }) {
             await AsyncStorage.multiRemove(['collector_token', 'collector_user']);
             setToken(null);
             setUser(null);
-          } else if (data.status !== localUser.status || data.zone !== localUser.zone) {
-            const synced = { ...localUser, status: data.status, zone: data.zone };
+          } else if (
+            data.status !== localUser.status ||
+            data.zone !== localUser.zone ||
+            data.mustChangePassword !== localUser.mustChangePassword
+          ) {
+            // mustChangePassword flips when an admin issues a temporary password
+            const synced = { ...localUser, status: data.status, zone: data.zone, mustChangePassword: data.mustChangePassword };
             setUser(synced);
             await AsyncStorage.setItem('collector_user', JSON.stringify(synced));
           }
@@ -46,13 +54,21 @@ export function AuthProvider({ children }) {
     loadAuth();
   }, []);
 
-  const login = async (phone, pin) => {
-    const { data } = await api.post('/auth/collector-login', { phone, pin });
+  const login = async (email, password) => {
+    const { data } = await api.post('/auth/collector-login', { email, password });
     await AsyncStorage.setItem('collector_token', data.token);
     await AsyncStorage.setItem('collector_user', JSON.stringify(data.user));
     setToken(data.token);
     setUser(data.user);
+    setTempPassword(data.user.mustChangePassword ? password : null);
     return data;
+  };
+
+  // Replace the current (or temporary) password; clears the must-change flag
+  const changePassword = async (currentPassword, newPassword) => {
+    await api.put('/auth/me/password', { currentPassword, newPassword });
+    setTempPassword(null);
+    if (user?.mustChangePassword) await updateUser({ ...user, mustChangePassword: false });
   };
 
   const updateUser = async (updatedUser) => {
@@ -64,6 +80,7 @@ export function AuthProvider({ children }) {
     await AsyncStorage.multiRemove(['collector_token', 'collector_user']);
     setToken(null);
     setUser(null);
+    setTempPassword(null);
   };
 
   // Kept across sign-outs so the login screen stays in the collector's language
@@ -73,7 +90,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, authenticated: !!token, loading, login, logout, updateUser, language, selectLanguage }}>
+    <AuthContext.Provider value={{ user, token, authenticated: !!token, loading, login, logout, updateUser, changePassword, tempPassword, language, selectLanguage }}>
       {children}
     </AuthContext.Provider>
   );

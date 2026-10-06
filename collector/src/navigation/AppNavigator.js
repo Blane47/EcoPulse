@@ -15,6 +15,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import ChatScreen from '../screens/ChatScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import AssignedReportScreen from '../screens/AssignedReportScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import NotificationBanner from '../components/NotificationBanner';
 import { navigationRef } from './navigationRef';
 
@@ -98,7 +99,7 @@ function HomeTabs() {
 }
 
 export default function AppNavigator() {
-  const { authenticated, loading, language } = useAuth();
+  const { authenticated, loading, language, user } = useAuth();
   const en = language === 'en';
 
   if (loading) return null;
@@ -113,19 +114,23 @@ export default function AppNavigator() {
   return (
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {authenticated ? (
+        {authenticated && user?.mustChangePassword ? (
+          // Signed in with a temporary password from an admin: nothing else until it's replaced
+          <Stack.Screen name="ChooseYourPassword" component={ChangePasswordScreen} />
+        ) : authenticated ? (
           <>
             <Stack.Screen name="MainTabs" component={HomeTabs} />
             <Stack.Screen name="BinDetail" component={BinDetailScreen} options={{ ...detailHeader, title: en ? 'Bin Details' : 'Détails du bac' }} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ ...detailHeader, title: 'Notifications' }} />
             <Stack.Screen name="AssignedReport" component={AssignedReportScreen} options={{ ...detailHeader, title: en ? 'Assigned Report' : 'Signalement assigné' }} />
+            <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ ...detailHeader, title: en ? 'Password' : 'Mot de passe' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
-      {authenticated && <NotificationBanner />}
+      {authenticated && !user?.mustChangePassword && <NotificationBanner />}
     </NavigationContainer>
   );
 }

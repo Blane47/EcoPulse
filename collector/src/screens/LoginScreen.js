@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image,
-  ScrollView, KeyboardAvoidingView, Platform, Pressable, Dimensions,
+  ScrollView, KeyboardAvoidingView, Platform, Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -10,49 +10,38 @@ import { colors, gradients, shadows } from '../theme';
 import GradientBrand from '../components/GradientBrand';
 import { playSuccess } from '../utils/sounds';
 
-const PIN_LENGTH = 6;
-const PHONE_DIGITS = 9; // Cameroon national number, entered after the fixed +237 prefix
 // Tighter header on short phones so the whole form fits without scrolling
 const COMPACT = Dimensions.get('window').height < 720;
-
-// Keep only the 9 national digits (drops a pasted 237 / +237 prefix) and group them as 6XX XXX XXX
-const toNationalDigits = (text) => {
-  let digits = text.replace(/\D/g, '');
-  if (digits.length > PHONE_DIGITS && digits.startsWith('237')) digits = digits.slice(3);
-  return digits.slice(0, PHONE_DIGITS);
-};
-const formatPhone = (digits) => digits.replace(/(\d{3})(?=\d)/g, '$1 ');
+const looksLikeEmail = (text) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(text.trim());
 
 export default function LoginScreen() {
   const { login, language, selectLanguage } = useAuth();
   const en = language === 'en';
-  const [phone, setPhone] = useState(''); // national digits only
-  const [pin, setPin] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [focused, setFocused] = useState(null); // 'phone' | 'pin'
-  const pinRef = useRef(null);
+  const [focused, setFocused] = useState(null); // 'email' | 'password'
+  const passwordRef = useRef(null);
 
-  const canSubmit = phone.length === PHONE_DIGITS && pin.length === PIN_LENGTH && !loading;
+  const canSubmit = looksLikeEmail(email) && password.length > 0 && !loading;
 
-  const handleLogin = async (pinValue = pin) => {
+  const handleLogin = async () => {
     setError('');
-    if (phone.length !== PHONE_DIGITS || pinValue.length !== PIN_LENGTH) {
-      setError(en ? 'Enter your 9-digit phone number and 6-digit PIN.' : 'Saisissez votre numéro à 9 chiffres et votre PIN à 6 chiffres.');
-      return;
-    }
+    if (!canSubmit) return;
     setLoading(true);
     try {
-      await login(`+237${phone}`, pinValue);
+      await login(email.trim(), password);
       playSuccess();
     } catch (err) {
       const status = err.response?.status;
       if (!err.response) {
         setError(en ? 'Could not reach the server. Check your internet connection.' : 'Impossible de joindre le serveur. Vérifiez votre connexion internet.');
       } else if (status === 401) {
-        setError(en ? 'Wrong phone number or PIN. Try again.' : 'Numéro ou PIN incorrect. Réessayez.');
-        setPin('');
-        pinRef.current?.focus();
+        setError(en ? 'Wrong email or password. Try again.' : 'Email ou mot de passe incorrect. Réessayez.');
+        setPassword('');
+        passwordRef.current?.focus();
       } else if (status === 403) {
         setError(en
           ? 'Your account has been deactivated. Contact your supervisor.'
@@ -63,21 +52,6 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const onPhoneChange = (text) => {
-    const digits = toNationalDigits(text);
-    setPhone(digits);
-    if (error) setError('');
-    if (digits.length === PHONE_DIGITS && phone.length < PHONE_DIGITS) pinRef.current?.focus();
-  };
-
-  const onPinChange = (text) => {
-    const digits = text.replace(/\D/g, '').slice(0, PIN_LENGTH);
-    setPin(digits);
-    if (error) setError('');
-    // Sign in as soon as the last digit is typed
-    if (digits.length === PIN_LENGTH && phone.length === PHONE_DIGITS && !loading) handleLogin(digits);
   };
 
   return (
@@ -112,58 +86,54 @@ export default function LoginScreen() {
           <View style={styles.card}>
             <Text style={styles.title}>{en ? 'Sign in' : 'Connexion'}</Text>
             <Text style={styles.subtitle}>
-              {en ? 'Use the phone number and PIN your supervisor gave you.' : 'Utilisez le numéro et le PIN fournis par votre superviseur.'}
+              {en
+                ? 'Use the email from your collector application and your password.'
+                : 'Utilisez l’email de votre candidature de collecteur et votre mot de passe.'}
             </Text>
 
-            <Text style={styles.label}>{en ? 'Phone number' : 'Numéro de téléphone'}</Text>
-            <View style={[styles.phoneField, focused === 'phone' && styles.fieldFocused]}>
-              <View style={styles.prefix}>
-                <Text style={styles.prefixText}>+237</Text>
-              </View>
-              <TextInput
-                style={styles.phoneInput}
-                value={formatPhone(phone)}
-                onChangeText={onPhoneChange}
-                placeholder="670 000 000"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="phone-pad"
-                textContentType="telephoneNumber"
-                autoComplete="tel"
-                maxLength={PHONE_DIGITS + 4}
-                returnKeyType="next"
-                onSubmitEditing={() => pinRef.current?.focus()}
-                onFocus={() => setFocused('phone')}
-                onBlur={() => setFocused(null)}
-              />
-            </View>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={[styles.field, focused === 'email' && styles.fieldFocused]}
+              value={email}
+              onChangeText={(t) => { setEmail(t); if (error) setError(''); }}
+              placeholder={en ? 'you@example.com' : 'vous@exemple.com'}
+              placeholderTextColor={colors.textMuted}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="username"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              onFocus={() => setFocused('email')}
+              onBlur={() => setFocused(null)}
+            />
 
-            <Text style={styles.label}>PIN</Text>
-            {/* Six boxes drawn over one invisible input, so the native number pad does the typing */}
-            <Pressable style={styles.pinRow} onPress={() => pinRef.current?.focus()}>
-              {Array.from({ length: PIN_LENGTH }).map((_, i) => {
-                const filled = i < pin.length;
-                const active = focused === 'pin' && (i === pin.length || (i === PIN_LENGTH - 1 && pin.length === PIN_LENGTH));
-                return (
-                  <View key={i} style={[styles.pinBox, filled && styles.pinBoxFilled, active && styles.pinBoxActive]}>
-                    {filled && <View style={styles.pinDot} />}
-                  </View>
-                );
-              })}
+            <Text style={styles.label}>{en ? 'Password' : 'Mot de passe'}</Text>
+            <View style={[styles.passwordField, focused === 'password' && styles.fieldFocused]}>
               <TextInput
-                ref={pinRef}
-                style={styles.hiddenInput}
-                value={pin}
-                onChangeText={onPinChange}
-                keyboardType="number-pad"
-                textContentType="oneTimeCode"
-                maxLength={PIN_LENGTH}
-                secureTextEntry
-                caretHidden
-                onFocus={() => setFocused('pin')}
+                ref={passwordRef}
+                style={styles.passwordInput}
+                value={password}
+                onChangeText={(t) => { setPassword(t); if (error) setError(''); }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="password"
+                textContentType="password"
+                returnKeyType="go"
+                onSubmitEditing={handleLogin}
+                onFocus={() => setFocused('password')}
                 onBlur={() => setFocused(null)}
-                accessibilityLabel={en ? '6-digit PIN' : 'PIN à 6 chiffres'}
               />
-            </Pressable>
+              <TouchableOpacity
+                onPress={() => setShowPassword((v) => !v)}
+                style={styles.showToggle}
+                accessibilityLabel={showPassword ? (en ? 'Hide password' : 'Masquer le mot de passe') : (en ? 'Show password' : 'Afficher le mot de passe')}
+              >
+                <Text style={styles.showToggleText}>{showPassword ? (en ? 'Hide' : 'Masquer') : (en ? 'Show' : 'Afficher')}</Text>
+              </TouchableOpacity>
+            </View>
 
             {error ? (
               <View style={styles.errorBox}>
@@ -172,7 +142,7 @@ export default function LoginScreen() {
             ) : null}
 
             <TouchableOpacity
-              onPress={() => handleLogin()}
+              onPress={handleLogin}
               disabled={!canSubmit}
               activeOpacity={0.85}
               style={[styles.button, !canSubmit && !loading && styles.buttonDisabled]}
@@ -184,7 +154,9 @@ export default function LoginScreen() {
           </View>
 
           <Text style={styles.help}>
-            {en ? 'Forgot your PIN? Ask your supervisor to set a new one.' : 'PIN oublié ? Demandez à votre superviseur d\'en définir un nouveau.'}
+            {en
+              ? 'Forgot your password? Ask your supervisor for a new temporary one.'
+              : 'Mot de passe oublié ? Demandez à votre superviseur un nouveau mot de passe temporaire.'}
           </Text>
           <Text style={styles.footer}>{en ? 'EcoPulse · Buea Municipality' : 'EcoPulse · Commune de Buea'}</Text>
         </ScrollView>
@@ -269,8 +241,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // Phone
-  phoneField: {
+  // Fields
+  field: {
+    height: 54,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: colors.cardBorder,
+    backgroundColor: '#f8fafc',
+    paddingHorizontal: 14,
+    fontSize: 16,
+    color: colors.text,
+  },
+  fieldFocused: { borderColor: colors.accent, backgroundColor: '#fff' },
+  passwordField: {
     flexDirection: 'row',
     alignItems: 'center',
     height: 54,
@@ -280,41 +263,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc',
     overflow: 'hidden',
   },
-  fieldFocused: { borderColor: colors.accent, backgroundColor: '#fff' },
-  prefix: {
-    height: '100%',
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    borderRightWidth: 1,
-    borderRightColor: colors.cardBorder,
-    backgroundColor: '#f1f5f9',
-  },
-  prefixText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  phoneInput: {
-    flex: 1,
-    height: '100%',
-    paddingHorizontal: 14,
-    fontSize: 17,
-    letterSpacing: 1,
-    color: colors.text,
-  },
-
-  // PIN
-  pinRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  pinBox: {
-    width: '14.5%',
-    aspectRatio: 0.85,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.cardBorder,
-    backgroundColor: '#f8fafc',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pinBoxFilled: { borderColor: '#86efac', backgroundColor: colors.accentLight },
-  pinBoxActive: { borderColor: colors.accent, backgroundColor: '#fff' },
-  pinDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accentDark },
-  hiddenInput: { ...StyleSheet.absoluteFillObject, opacity: 0.02, color: 'transparent' },
+  passwordInput: { flex: 1, height: '100%', paddingHorizontal: 14, fontSize: 16, color: colors.text },
+  showToggle: { height: '100%', justifyContent: 'center', paddingHorizontal: 14 },
+  showToggleText: { fontSize: 13, fontWeight: '700', color: colors.accentDark },
 
   // Feedback + action
   errorBox: {
