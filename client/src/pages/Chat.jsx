@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, Send, ArrowLeft, Circle, Smartphone } from 'lucide-react';
+import { MessageSquare, Send, ArrowLeft, Smartphone } from 'lucide-react';
 import api from '../api/axios';
 
 // Resident conversations use "community_<phone>" as their chat id
@@ -27,6 +27,9 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+  const selected = chats.find((c) => c._id === selectedChat);
+  const selectedName = selected?.participantName || selected?.senderName;
+
   // { chatId, text } so the notice only shows on the conversation it belongs to
   const [resetNotice, setResetNotice] = useState(null);
 
@@ -136,7 +139,7 @@ export default function Chat() {
                 <div className="relative">
                   <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                     <span className="text-green-600 text-sm font-bold">
-                      {chat.senderName?.split(' ').map((n) => n[0]).join('') || '?'}
+                      {(chat.participantName || chat.senderName)?.split(' ').map((n) => n[0]).join('') || '?'}
                     </span>
                   </div>
                   {chat.unread > 0 && (
@@ -147,7 +150,7 @@ export default function Chat() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-center">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{chat.senderName || 'Collector'}</p>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{chat.participantName || chat.senderName || 'Collector'}</p>
                     <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">{timeAgo(chat.updatedAt)}</span>
                   </div>
                   <p className="text-xs text-gray-500 truncate mt-0.5">{chat.lastMessage}</p>
@@ -172,17 +175,16 @@ export default function Chat() {
               </button>
               <div className="w-9 h-9 rounded-full bg-green-100 flex items-center justify-center">
                 <span className="text-green-600 text-sm font-bold">
-                  {chats.find((c) => c._id === selectedChat)?.senderName?.split(' ').map((n) => n[0]).join('') || '?'}
+                  {selectedName?.split(' ').map((n) => n[0]).join('') || '?'}
                 </span>
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {chats.find((c) => c._id === selectedChat)?.senderName || 'Collector'}
+                <p className="text-sm font-semibold text-gray-900">{selectedName || 'Collector'}</p>
+                <p className="text-[11px] text-gray-400">
+                  {selectedChat.startsWith(COMMUNITY_PREFIX)
+                    ? `Resident · ${selectedChat.slice(COMMUNITY_PREFIX.length)}`
+                    : 'Collector'}
                 </p>
-                <div className="flex items-center gap-1">
-                  <Circle size={6} className="fill-green-500 text-green-500" />
-                  <span className="text-[10px] text-gray-400">Online</span>
-                </div>
               </div>
               {selectedChat.startsWith(COMMUNITY_PREFIX) && (
                 <button

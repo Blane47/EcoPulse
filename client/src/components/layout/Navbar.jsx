@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Search, Bell, Menu } from 'lucide-react';
+import { Search, Bell, Menu, X } from 'lucide-react';
 import NotificationDropdown from '../ui/NotificationDropdown';
+import GlobalSearch from './GlobalSearch';
 import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,6 +11,8 @@ export default function Navbar({ onMenuClick }) {
     ? user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
     : 'U';
   const [notifOpen, setNotifOpen] = useState(false);
+  // Phones: the search box opens in a bar under the header
+  const [mobileSearch, setMobileSearch] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
 
   useEffect(() => {
@@ -46,17 +49,25 @@ export default function Navbar({ onMenuClick }) {
       </div>
 
       {/* Search */}
-      <div className="relative w-80 hidden md:block">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-        <input
-          type="text"
-          placeholder="Search bin ID, location or collector..."
-          className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-card-border rounded-lg text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
-        />
-      </div>
+      <GlobalSearch className="w-80 hidden md:block" />
+      {mobileSearch && (
+        <div className="absolute left-0 right-0 top-full flex items-center gap-2 p-3 bg-white border-b border-card-border shadow-sm md:hidden">
+          <GlobalSearch className="flex-1" autoFocus onDone={() => setMobileSearch(false)} />
+          <button onClick={() => setMobileSearch(false)} className="p-2 text-gray-500" aria-label="Close search">
+            <X size={18} />
+          </button>
+        </div>
+      )}
 
       {/* Right side */}
       <div className="flex items-center gap-3 sm:gap-4">
+        <button
+          onClick={() => setMobileSearch((v) => !v)}
+          className="p-2 text-gray-400 hover:text-gray-600 md:hidden"
+          aria-label="Search"
+        >
+          <Search size={20} />
+        </button>
         <div className="relative">
           <button
             onClick={() => setNotifOpen(!notifOpen)}

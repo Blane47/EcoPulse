@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Plus, X } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
 import { getBins } from '../api/bins';
@@ -14,6 +15,14 @@ export default function Bins({ onAddBin }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const perPage = 5;
+  // ?q= comes from the top-bar search (bin ID or location)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const q = searchParams.get('q') || '';
+  const [prevQ, setPrevQ] = useState(q);
+  if (q !== prevQ) {
+    setPrevQ(q);
+    setCurrentPage(1);
+  }
 
   useEffect(() => {
     const fetchBins = async () => {
@@ -23,6 +32,7 @@ export default function Bins({ onAddBin }) {
         if (zoneFilter) params.zone = zoneFilter;
         if (typeFilter) params.type = typeFilter;
         if (statusFilter) params.status = statusFilter;
+        if (q) params.q = q;
 
         const data = await getBins(params);
         setBinsData(data.bins || []);
@@ -34,7 +44,7 @@ export default function Bins({ onAddBin }) {
       }
     };
     fetchBins();
-  }, [currentPage, zoneFilter, typeFilter, statusFilter]);
+  }, [currentPage, zoneFilter, typeFilter, statusFilter, q]);
 
   const totalPages = Math.ceil(total / perPage);
 
@@ -64,6 +74,21 @@ export default function Bins({ onAddBin }) {
       </div>
 
       {/* Two selects per row on phones, the status select taking the full second row */}
+      {q && (
+        <div className="mb-3">
+          <span className="inline-flex items-center gap-2 pl-3 pr-1.5 py-1 rounded-full bg-green-50 border border-green-200 text-sm text-green-700">
+            Results for “{q}”
+            <button
+              onClick={() => setSearchParams({})}
+              className="p-0.5 rounded-full hover:bg-green-100"
+              aria-label="Clear search"
+            >
+              <X size={14} />
+            </button>
+          </span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 mb-4">
         <select value={zoneFilter} onChange={(e) => { setZoneFilter(e.target.value); setCurrentPage(1); }} className="px-3 py-2 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30">
           <option value="">All Zones</option>

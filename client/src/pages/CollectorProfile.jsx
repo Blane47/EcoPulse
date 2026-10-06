@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock, KeyRound } from 'lucide-react';
 import { getCollectorById, updateCollector } from '../api/collectors';
 import api from '../api/axios';
 import Badge from '../components/ui/Badge';
@@ -15,6 +15,9 @@ export default function CollectorProfile() {
   const [showAssignZone, setShowAssignZone] = useState(false);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [resettingPin, setResettingPin] = useState(false);
+  // { pin } after a successful reset (shown once), or { error }
+  const [pinResult, setPinResult] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -35,6 +38,21 @@ export default function CollectorProfile() {
   useEffect(() => {
     fetchData();
   }, [id]);
+
+  // Collectors sign in with phone + PIN; when one forgets it, the admin issues a new one here
+  const handleResetPin = async () => {
+    if (!window.confirm(`Give ${collector.name} a new login PIN? Their current PIN will stop working.`)) return;
+    setResettingPin(true);
+    setPinResult(null);
+    const pin = String(crypto.getRandomValues(new Uint32Array(1))[0] % 1000000).padStart(6, '0');
+    try {
+      await updateCollector(id, { pin });
+      setPinResult({ pin });
+    } catch (err) {
+      setPinResult({ error: err.response?.data?.message || 'Could not reset the PIN.' });
+    }
+    setResettingPin(false);
+  };
 
   const handleStatusChange = async (newStatus) => {
     setUpdatingStatus(true);
@@ -83,8 +101,8 @@ export default function CollectorProfile() {
       </button>
 
       {/* Profile Header */}
-      <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-2xl p-8 mb-6">
-        <div className="flex items-center gap-6">
+      <div className="bg-gradient-to-br from-green-500 to-green-700 rounded-2xl p-5 sm:p-8 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6">
           {collector.avatar ? (
             <img
               src={collector.avatar}
@@ -96,7 +114,7 @@ export default function CollectorProfile() {
               {initials}
             </div>
           )}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl font-bold text-white">{collector.name}</h1>
             <div className="flex items-center gap-3 mt-2 relative">
               <button
@@ -132,19 +150,55 @@ export default function CollectorProfile() {
               Member since {new Date(collector.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right">
             <p className="text-white/50 text-xs uppercase tracking-wider">Efficiency</p>
             <p className="text-5xl font-black text-white">{collector.efficiency}%</p>
-            <button
-              onClick={() => setShowAssignZone(true)}
-              className="mt-3 px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition-colors border border-white/20"
-            >
-              <MapPin size={14} className="inline mr-1.5 -mt-0.5" />
-              Assign Zone
-            </button>
+            <div className="mt-3 flex flex-wrap gap-2 sm:justify-end">
+              <button
+                onClick={() => setShowAssignZone(true)}
+                className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition-colors border border-white/20"
+              >
+                <MapPin size={14} className="inline mr-1.5 -mt-0.5" />
+                Assign Zone
+              </button>
+              <button
+                onClick={handleResetPin}
+                disabled={resettingPin}
+                className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-sm font-medium rounded-lg transition-colors border border-white/20 disabled:opacity-50"
+              >
+                <KeyRound size={14} className="inline mr-1.5 -mt-0.5" />
+                {resettingPin ? 'Resetting…' : 'Reset PIN'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {pinResult && (
+        <div
+          className={`mb-6 p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-3 ${
+            pinResult.pin ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+          }`}
+          role="status"
+        >
+          {pinResult.pin ? (
+            <>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-green-800">New PIN for {collector.name}</p>
+                <p className="text-xs text-green-700 mt-0.5">
+                  Give it to them to sign in with {collector.phone || 'their phone number'}. It won't be shown again.
+                </p>
+              </div>
+              <p className="text-2xl font-bold text-green-700 font-mono tracking-widest">{pinResult.pin}</p>
+            </>
+          ) : (
+            <p className="flex-1 text-sm text-red-600">{pinResult.error}</p>
+          )}
+          <button onClick={() => setPinResult(null)} className="text-xs text-gray-500 hover:underline self-start sm:self-center">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
