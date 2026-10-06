@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Animated, Image } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
 import { SearchIcon, MapPinIcon, CheckIcon } from '../components/Icons';
@@ -138,32 +139,32 @@ const buildMapHTML = (bins, searchQuery) => {
 };
 
 export default function MapScreen() {
+  const { language } = useAuth();
+  const en = language === 'en';
   const [bins, setBins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selectedBin, setSelectedBin] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [collecting, setCollecting] = useState(false);
   const sheetAnim = useRef(new Animated.Value(0)).current;
   const webViewRef = useRef(null);
 
-  useEffect(() => {
-    const fetchBins = async () => {
-      try {
-        const { data } = await api.get('/bins');
-        const list = data.bins || data;
-        setBins(Array.isArray(list) ? list : []);
-      } catch {
-        setBins([
-          { _id: '1', binId: 'BIN-001', location: 'UB Main Gate, Molyko', fillLevel: 92, status: 'critical', coordinates: { lat: 4.1548, lng: 9.2985 } },
-          { _id: '2', binId: 'BIN-042', location: 'Bonduma Junction', fillLevel: 68, status: 'warning', coordinates: { lat: 4.1585, lng: 9.2868 } },
-          { _id: '3', binId: 'BIN-023', location: 'Great Soppo Market', fillLevel: 78, status: 'warning', coordinates: { lat: 4.1630, lng: 9.2790 } },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBins();
+  const fetchBins = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.get('/bins');
+      const list = data.bins || data;
+      setBins(Array.isArray(list) ? list : []);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { fetchBins(); }, [fetchBins]);
 
   const handleMarkerPress = (bin) => {
     setSelectedBin(bin);
@@ -185,7 +186,9 @@ export default function MapScreen() {
       } else if (msg.type === 'mapPress') {
         closeSheet();
       }
-    } catch {}
+    } catch {
+      // Not one of our map messages: nothing to do
+    }
   };
 
   const handleNavigate = () => {
@@ -207,8 +210,8 @@ export default function MapScreen() {
   };
 
   const statusLabel = (status) => {
-    if (status === 'critical') return 'Critical';
-    if (status === 'warning') return 'Warning';
+    if (status === 'critical') return en ? 'Critical' : 'Critique';
+    if (status === 'warning') return en ? 'Warning' : 'Alerte';
     return 'Optimal';
   };
 
@@ -225,6 +228,20 @@ export default function MapScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <LinearGradient colors={gradients.screenBg} style={styles.centered}>
+        <Text style={styles.messageTitle}>{en ? 'Could not load bins' : 'Impossible de charger les bacs'}</Text>
+        <Text style={styles.messageText}>
+          {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+        </Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={fetchBins}>
+          <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
+        </TouchableOpacity>
+      </LinearGradient>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Search Bar */}
@@ -235,7 +252,7 @@ export default function MapScreen() {
           </View>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search bin or location..."
+            placeholder={en ? 'Search bin or location...' : 'Rechercher un bac ou un lieu...'}
             placeholderTextColor={colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -277,15 +294,19 @@ export default function MapScreen() {
                     {selectedBin.fillLevel}% {statusLabel(selectedBin.status)}
                   </Text>
                 </View>
-                <Text style={styles.sheetDistance}>0.7km away</Text>
+                {!!selectedBin.zone && <Text style={styles.sheetDistance}>{selectedBin.zone}</Text>}
               </View>
             </View>
 
             {/* Capacity Level */}
             <View style={styles.capacitySection}>
-              <Text style={styles.capacityLabel}>CAPACITY LEVEL</Text>
+              <Text style={styles.capacityLabel}>{en ? 'CAPACITY LEVEL' : 'NIVEAU DE REMPLISSAGE'}</Text>
               <Text style={[styles.criticalZone, { color: statusColors[selectedBin.status] || colors.accent }]}>
-                {selectedBin.status === 'critical' ? 'Critical Zone' : selectedBin.status === 'warning' ? 'Warning Zone' : 'Safe Zone'}
+                {selectedBin.status === 'critical'
+                  ? (en ? 'Critical Zone' : 'Zone critique')
+                  : selectedBin.status === 'warning'
+                    ? (en ? 'Warning Zone' : "Zone d'alerte")
+                    : (en ? 'Safe Zone' : 'Zone sûre')}
               </Text>
             </View>
             <View style={styles.capacityBar}>
@@ -302,7 +323,7 @@ export default function MapScreen() {
               <TouchableOpacity style={styles.navigateBtn} onPress={handleNavigate} activeOpacity={0.8}>
                 <LinearGradient colors={gradients.greenButton} style={styles.actionGradient}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={styles.actionBtnText}>Navigate</Text>
+                    <Text style={styles.actionBtnText}>{en ? 'Navigate' : 'Y aller'}</Text>
                     <MapPinIcon size={16} color="#fff" />
                   </View>
                 </LinearGradient>
@@ -313,7 +334,7 @@ export default function MapScreen() {
                     <ActivityIndicator color={colors.accent} size="small" />
                   ) : (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.collectBtnText}>Mark Collected</Text>
+                      <Text style={styles.collectBtnText}>{en ? 'Mark Collected' : 'Marquer collecté'}</Text>
                       <CheckIcon size={16} color={colors.accent} />
                     </View>
                   )}
@@ -331,6 +352,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
+  messageTitle: { fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  messageText: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 19 },
+  retryBtn: { marginTop: 18, backgroundColor: colors.accent, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 },
+  retryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   // Search
   searchContainer: {

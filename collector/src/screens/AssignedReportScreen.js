@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, ScrollView, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
 import { MapPinIcon, CheckIcon } from '../components/Icons';
@@ -10,6 +11,8 @@ import api from '../api/axios';
 // A community report the admin assigned to this collector from the dashboard
 export default function AssignedReportScreen({ route }) {
   const { id } = route.params;
+  const { language } = useAuth();
+  const en = language === 'en';
   const [report, setReport] = useState(null);
   const [state, setState] = useState('loading'); // loading | ready | missing | error
   const [completing, setCompleting] = useState(false);
@@ -29,26 +32,39 @@ export default function AssignedReportScreen({ route }) {
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
   const markCollected = () => {
-    Alert.alert('Mark as collected?', 'Confirm the waste at this location has been cleared.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Mark Collected',
-        onPress: async () => {
-          setCompleting(true);
-          try {
-            const { data } = await api.patch(`/reports/${id}/collected`);
-            setReport(data);
-            playSuccess();
-          } catch (err) {
-            Alert.alert(
-              'Could not update',
-              err.response?.data?.message || 'Check your internet connection and try again.'
-            );
-          }
-          setCompleting(false);
+    Alert.alert(
+      en ? 'Mark as collected?' : 'Marquer comme collecté ?',
+      en ? 'Confirm the waste at this location has been cleared.' : 'Confirmez que les déchets à cet endroit ont été enlevés.',
+      [
+        { text: en ? 'Cancel' : 'Annuler', style: 'cancel' },
+        {
+          text: en ? 'Mark Collected' : 'Marquer collecté',
+          onPress: async () => {
+            setCompleting(true);
+            try {
+              const { data } = await api.patch(`/reports/${id}/collected`);
+              setReport(data);
+              playSuccess();
+            } catch (err) {
+              let msg;
+              if (!err.response) {
+                msg = en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.';
+              } else if (en) {
+                msg = err.response.data?.message || 'Please try again.';
+              } else if (err.response.status === 403) {
+                msg = 'Ce signalement ne vous est plus assigné.';
+              } else if (err.response.status === 404) {
+                msg = "Ce signalement n'existe plus.";
+              } else {
+                msg = 'Veuillez réessayer.';
+              }
+              Alert.alert(en ? 'Could not update' : 'Mise à jour impossible', msg);
+            }
+            setCompleting(false);
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   if (state === 'loading') {
@@ -63,16 +79,18 @@ export default function AssignedReportScreen({ route }) {
     return (
       <LinearGradient colors={gradients.screenBg} style={styles.centered}>
         <Text style={styles.messageTitle}>
-          {state === 'missing' ? 'Report no longer assigned' : 'Could not load report'}
+          {state === 'missing'
+            ? (en ? 'Report no longer assigned' : 'Signalement plus assigné')
+            : (en ? 'Could not load report' : 'Impossible de charger le signalement')}
         </Text>
         <Text style={styles.messageText}>
           {state === 'missing'
-            ? 'This report was reassigned or removed by the admin.'
-            : 'Check your internet connection and try again.'}
+            ? (en ? 'This report was reassigned or removed by the admin.' : "Ce signalement a été réassigné ou supprimé par l'admin.")
+            : (en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.')}
         </Text>
         {state === 'error' && (
           <TouchableOpacity style={styles.retryBtn} onPress={fetchReport}>
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
           </TouchableOpacity>
         )}
       </LinearGradient>
@@ -80,6 +98,7 @@ export default function AssignedReportScreen({ route }) {
   }
 
   const isCollected = report.status === 'collected';
+  const formatDate = (d) => new Date(d).toLocaleDateString(en ? 'en-GB' : 'fr-FR');
   const hasCoords = !!(report.coordinates?.lat && report.coordinates?.lng);
 
   return (
@@ -100,24 +119,24 @@ export default function AssignedReportScreen({ route }) {
             </View>
             <View style={[styles.statusBadge, { backgroundColor: isCollected ? colors.accentLight : '#ede9fe' }]}>
               <Text style={[styles.statusText, { color: isCollected ? colors.accent : '#7c3aed' }]}>
-                {isCollected ? 'Collected' : 'Assigned'}
+                {isCollected ? (en ? 'Collected' : 'Collecté') : (en ? 'Assigned' : 'Assigné')}
               </Text>
             </View>
           </View>
 
           {!!report.note && (
             <View style={styles.noteBox}>
-              <Text style={styles.detailLabel}>Resident's note</Text>
+              <Text style={styles.detailLabel}>{en ? "Resident's note" : 'Note du résident'}</Text>
               <Text style={styles.noteText}>{report.note}</Text>
             </View>
           )}
 
           <View style={styles.detailsGrid}>
             {[
-              { label: 'Reported by', value: report.reporterName || 'Resident' },
-              { label: 'Reported', value: new Date(report.createdAt).toLocaleDateString() },
-              { label: 'Assigned', value: report.assignedAt ? new Date(report.assignedAt).toLocaleDateString() : '—' },
-              { label: 'Collected', value: report.collectedAt ? new Date(report.collectedAt).toLocaleDateString() : '—' },
+              { label: en ? 'Reported by' : 'Signalé par', value: report.reporterName || (en ? 'Resident' : 'Résident') },
+              { label: en ? 'Reported' : 'Signalé le', value: formatDate(report.createdAt) },
+              { label: en ? 'Assigned' : 'Assigné le', value: report.assignedAt ? formatDate(report.assignedAt) : '—' },
+              { label: en ? 'Collected' : 'Collecté le', value: report.collectedAt ? formatDate(report.collectedAt) : '—' },
             ].map((d) => (
               <View key={d.label} style={styles.detailItem}>
                 <Text style={styles.detailLabel}>{d.label}</Text>
@@ -137,7 +156,7 @@ export default function AssignedReportScreen({ route }) {
             <View style={styles.navigateBtnInner}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <MapPinIcon size={16} color={colors.accent} />
-                <Text style={styles.navigateBtnText}>Navigate</Text>
+                <Text style={styles.navigateBtnText}>{en ? 'Navigate' : 'Y aller'}</Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -154,7 +173,7 @@ export default function AssignedReportScreen({ route }) {
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <CheckIcon size={16} color="#fff" />
-                  <Text style={styles.collectBtnText}>{isCollected ? 'Collected' : 'Mark Collected'}</Text>
+                  <Text style={styles.collectBtnText}>{isCollected ? (en ? 'Collected' : 'Collecté') : (en ? 'Mark Collected' : 'Marquer collecté')}</Text>
                 </View>
               )}
             </LinearGradient>

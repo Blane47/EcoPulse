@@ -22,13 +22,16 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const tabConfig = {
-  Home: { Icon: HomeIcon, label: 'HOME' },
-  Route: { Icon: RouteIcon, label: 'ROUTE' },
-  Map: { Icon: MapIcon, label: 'MAP' },
-  Profile: { Icon: ProfileIcon, label: 'PROFILE' },
+  Home: { Icon: HomeIcon, en: 'HOME', fr: 'ACCUEIL' },
+  Route: { Icon: RouteIcon, en: 'ROUTE', fr: 'ITINÉRAIRE' },
+  Map: { Icon: MapIcon, en: 'MAP', fr: 'CARTE' },
+  Profile: { Icon: ProfileIcon, en: 'PROFILE', fr: 'PROFIL' },
 };
 
 function HomeTabs() {
+  const { language } = useAuth();
+  const en = language === 'en';
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -54,7 +57,7 @@ function HomeTabs() {
             letterSpacing: 0.5,
             marginTop: -2,
           }}>
-            {tabConfig[route.name]?.label}
+            {en ? tabConfig[route.name]?.en : tabConfig[route.name]?.fr}
           </Text>
         ),
         tabBarBackground: () => (
@@ -95,7 +98,8 @@ function HomeTabs() {
 }
 
 export default function AppNavigator() {
-  const { authenticated, loading } = useAuth();
+  const { authenticated, loading, language } = useAuth();
+  const en = language === 'en';
 
   if (loading) return null;
 
@@ -112,10 +116,10 @@ export default function AppNavigator() {
         {authenticated ? (
           <>
             <Stack.Screen name="MainTabs" component={HomeTabs} />
-            <Stack.Screen name="BinDetail" component={BinDetailScreen} options={{ ...detailHeader, title: 'Bin Details' }} />
+            <Stack.Screen name="BinDetail" component={BinDetailScreen} options={{ ...detailHeader, title: en ? 'Bin Details' : 'Détails du bac' }} />
             <Stack.Screen name="Chat" component={ChatScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ ...detailHeader, title: 'Notifications' }} />
-            <Stack.Screen name="AssignedReport" component={AssignedReportScreen} options={{ ...detailHeader, title: 'Assigned Report' }} />
+            <Stack.Screen name="AssignedReport" component={AssignedReportScreen} options={{ ...detailHeader, title: en ? 'Assigned Report' : 'Signalement assigné' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />

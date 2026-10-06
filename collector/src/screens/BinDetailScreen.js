@@ -1,34 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
 import { MapPinIcon, CameraIcon, CheckIcon } from '../components/Icons';
 import { playSuccess } from '../utils/sounds';
 import api from '../api/axios';
 
+const STATUS_FR = { critical: 'Critique', warning: 'Alerte', optimal: 'Optimal', empty: 'Vide' };
+const TYPE_FR = { General: 'Général', Recyclable: 'Recyclable', Organic: 'Organique' };
+
 export default function BinDetailScreen({ route, navigation }) {
   const { id } = route.params;
+  const { language } = useAuth();
+  const en = language === 'en';
   const [bin, setBin] = useState(null);
+  const [state, setState] = useState('loading'); // loading | ready | missing | error
   const [collecting, setCollecting] = useState(false);
 
-  useEffect(() => {
-    const fetchBin = async () => {
-      try {
-        const { data } = await api.get(`/bins/${id}`);
-        setBin(data);
-      } catch {
-        setBin({
-          _id: id, binId: 'BIN-001', location: 'UB Main Gate, Molyko', zone: 'Molyko',
-          type: 'General', fillLevel: 92, status: 'critical',
-          coordinates: { lat: 4.1548, lng: 9.2985 },
-          lastCollected: new Date(Date.now() - 86400000).toISOString(),
-          assignedCollector: { name: 'Emmanuel Ngwa' },
-        });
-      }
-    };
-    fetchBin();
+  const fetchBin = useCallback(async () => {
+    setState('loading');
+    try {
+      const { data } = await api.get(`/bins/${id}`);
+      setBin(data);
+      setState('ready');
+    } catch (err) {
+      setState(err.response?.status === 404 ? 'missing' : 'error');
+    }
   }, [id]);
+
+  useEffect(() => { fetchBin(); }, [fetchBin]);
 
   const handleCollect = async () => {
     if (!bin) return;
@@ -41,10 +43,32 @@ export default function BinDetailScreen({ route, navigation }) {
     setCollecting(false);
   };
 
-  if (!bin) {
+  if (state === 'loading') {
     return (
       <LinearGradient colors={gradients.screenBg} style={styles.loading}>
         <ActivityIndicator size="large" color={colors.accent} />
+      </LinearGradient>
+    );
+  }
+
+  if (state !== 'ready') {
+    return (
+      <LinearGradient colors={gradients.screenBg} style={styles.centered}>
+        <Text style={styles.messageTitle}>
+          {state === 'missing'
+            ? (en ? 'Bin not found' : 'Bac introuvable')
+            : (en ? 'Could not load bin' : 'Impossible de charger le bac')}
+        </Text>
+        <Text style={styles.messageText}>
+          {state === 'missing'
+            ? (en ? 'This bin was removed by the admin.' : "Ce bac a été supprimé par l'admin.")
+            : (en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.')}
+        </Text>
+        {state === 'error' && (
+          <TouchableOpacity style={styles.retryBtn} onPress={fetchBin}>
+            <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
+          </TouchableOpacity>
+        )}
       </LinearGradient>
     );
   }
@@ -72,13 +96,13 @@ export default function BinDetailScreen({ route, navigation }) {
             </View>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: scBg }]}>
-            <Text style={[styles.statusText, { color: sc }]}>{bin.status}</Text>
+            <Text style={[styles.statusText, { color: sc }]}>{en ? bin.status : STATUS_FR[bin.status] || bin.status}</Text>
           </View>
         </View>
 
         <View style={[styles.fillCircle, { borderColor: sc }]}>
           <Text style={[styles.fillValue, { color: sc }]}>{bin.fillLevel}%</Text>
-          <Text style={styles.fillLabel}>FILL LEVEL</Text>
+          <Text style={styles.fillLabel}>{en ? 'FILL LEVEL' : 'REMPLISSAGE'}</Text>
         </View>
 
         {/* Capacity Bar */}
@@ -95,10 +119,15 @@ export default function BinDetailScreen({ route, navigation }) {
 
         <View style={styles.detailsGrid}>
           {[
-            { label: 'Type', value: bin.type },
+            { label: 'Type', value: en ? bin.type : TYPE_FR[bin.type] || bin.type },
             { label: 'Zone', value: bin.zone },
-            { label: 'Last Collected', value: bin.lastCollected ? new Date(bin.lastCollected).toLocaleDateString() : 'Never' },
-            { label: 'Collector', value: bin.assignedCollector?.name || '—' },
+            {
+              label: en ? 'Last Collected' : 'Dernière collecte',
+              value: bin.lastCollected
+                ? new Date(bin.lastCollected).toLocaleDateString(en ? 'en-GB' : 'fr-FR')
+                : (en ? 'Never' : 'Jamais'),
+            },
+            { label: en ? 'Collector' : 'Collecteur', value: bin.assignedCollector?.name || '—' },
           ].map((d) => (
             <View key={d.label} style={styles.detailItem}>
               <Text style={styles.detailLabel}>{d.label}</Text>
@@ -114,7 +143,7 @@ export default function BinDetailScreen({ route, navigation }) {
           <View style={styles.navigateBtnInner}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <MapPinIcon size={16} color={colors.accent} />
-              <Text style={styles.navigateBtnText}>Navigate</Text>
+              <Text style={styles.navigateBtnText}>{en ? 'Navigate' : 'Y aller'}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -135,7 +164,7 @@ export default function BinDetailScreen({ route, navigation }) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 {isCollected ? <CheckIcon size={16} color="#fff" /> : <CameraIcon size={16} color="#fff" />}
                 <Text style={styles.collectBtnText}>
-                  {isCollected ? 'Collected' : 'Verify & Collect'}
+                  {isCollected ? (en ? 'Collected' : 'Collecté') : (en ? 'Verify & Collect' : 'Vérifier et collecter')}
                 </Text>
               </View>
             )}
@@ -149,6 +178,11 @@ export default function BinDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, paddingTop: 20 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
+  messageTitle: { fontSize: 17, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  messageText: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', marginTop: 6, lineHeight: 19 },
+  retryBtn: { marginTop: 18, backgroundColor: colors.accent, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 12 },
+  retryText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   card: {
     backgroundColor: colors.cardGlass,
     borderRadius: 20,

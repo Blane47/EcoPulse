@@ -14,7 +14,8 @@ import api from '../api/axios';
 const truckBanner = require('../assets/images/truck-banner.png');
 
 export default function HomeScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, language } = useAuth();
+  const en = language === 'en';
   const { unread, notifications } = useNotifications();
   const [stats, setStats] = useState({ assigned: 0, collected: 0, remaining: 0 });
   const [priorityBins, setPriorityBins] = useState([]);
@@ -59,16 +60,16 @@ export default function HomeScreen({ navigation }) {
 
   const greeting = () => {
     const h = new Date().getHours();
-    if (h < 12) return 'Good Morning';
-    if (h < 17) return 'Good Afternoon';
-    return 'Good Evening';
+    if (h < 12) return en ? 'Good Morning' : 'Bonjour';
+    if (h < 17) return en ? 'Good Afternoon' : 'Bon après-midi';
+    return en ? 'Good Evening' : 'Bonsoir';
   };
 
   const progressPct = stats.assigned > 0 ? Math.round((stats.collected / stats.assigned) * 100) : 0;
 
   const statusLabel = (status) => {
-    if (status === 'critical') return 'CRITICAL';
-    if (status === 'warning') return 'WARNING';
+    if (status === 'critical') return en ? 'CRITICAL' : 'CRITIQUE';
+    if (status === 'warning') return en ? 'WARNING' : 'ALERTE';
     return 'OPTIMAL';
   };
 
@@ -118,7 +119,7 @@ export default function HomeScreen({ navigation }) {
                   </View>
                 )}
                 <Text style={[styles.greetingText, { color: '#fff' }]}>
-                  {greeting()}, {user?.name?.split(' ')[0] || 'Collector'} 👋
+                  {greeting()}, {user?.name?.split(' ')[0] || (en ? 'Collector' : 'Collecteur')} 👋
                 </Text>
               </View>
             </LinearGradient>
@@ -128,8 +129,12 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.onLeaveBanner}>
                 <Text style={{ fontSize: 18 }}>🏖️</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.onLeaveTitle}>You are currently on leave</Text>
-                  <Text style={styles.onLeaveSub}>Collection actions are disabled. Contact your supervisor to resume duty.</Text>
+                  <Text style={styles.onLeaveTitle}>{en ? 'You are currently on leave' : 'Vous êtes actuellement en congé'}</Text>
+                  <Text style={styles.onLeaveSub}>
+                    {en
+                      ? 'Collection actions are disabled. Contact your supervisor to resume duty.'
+                      : 'Les collectes sont désactivées. Contactez votre superviseur pour reprendre le service.'}
+                  </Text>
                 </View>
               </View>
             )}
@@ -163,10 +168,11 @@ export default function HomeScreen({ navigation }) {
                     <View style={styles.dutyBadge}>
                       <View style={[styles.dutyDot, user?.status === 'on-leave' && { backgroundColor: colors.warning }]} />
                       <Text style={styles.dutyText}>
-                        {user?.status === 'on-leave' ? 'ON LEAVE' : 'ON DUTY'} — {(user?.zone || 'MOLYKO ZONE').toUpperCase()}
+                        {user?.status === 'on-leave' ? (en ? 'ON LEAVE' : 'EN CONGÉ') : (en ? 'ON DUTY' : 'EN SERVICE')}
+                        {user?.zone ? ` — ${user.zone.toUpperCase()}` : ''}
                       </Text>
                     </View>
-                    <Text style={styles.bannerTitle}>Today's Route Schedule</Text>
+                    <Text style={styles.bannerTitle}>{en ? "Today's Route Schedule" : 'Itinéraire du jour'}</Text>
                   </View>
                   <Image source={truckBanner} style={styles.bannerImage} resizeMode="contain" />
                 </View>
@@ -176,9 +182,9 @@ export default function HomeScreen({ navigation }) {
             {/* Stats Row */}
             <View style={styles.statsRow}>
               {[
-                { Icon: () => <MapPinIcon size={20} color={colors.text} />, label: 'ASSIGNED', value: stats.assigned, color: colors.text },
-                { Icon: () => <CheckIcon size={20} color={colors.accent} />, label: 'COLLECTED', value: stats.collected, color: colors.accent },
-                { Icon: () => <ClockIcon size={20} color={colors.warning} />, label: 'REMAINING', value: stats.remaining, color: colors.warning },
+                { Icon: () => <MapPinIcon size={20} color={colors.text} />, label: en ? 'ASSIGNED' : 'ASSIGNÉS', value: stats.assigned, color: colors.text },
+                { Icon: () => <CheckIcon size={20} color={colors.accent} />, label: en ? 'COLLECTED' : 'COLLECTÉS', value: stats.collected, color: colors.accent },
+                { Icon: () => <ClockIcon size={20} color={colors.warning} />, label: en ? 'REMAINING' : 'RESTANTS', value: stats.remaining, color: colors.warning },
               ].map((stat) => (
                 <View key={stat.label} style={styles.statCard}>
                   <View style={styles.statIcon}><stat.Icon /></View>
@@ -191,8 +197,10 @@ export default function HomeScreen({ navigation }) {
             {/* Progress Bar */}
             <View style={styles.progressContainer}>
               <View style={styles.progressHeader}>
-                <Text style={styles.progressTitle}>Today's Progress — {progressPct}% Complete</Text>
-                <Text style={styles.progressCount}>{stats.collected}/{stats.assigned} Bins</Text>
+                <Text style={styles.progressTitle}>
+                  {en ? `Today's Progress — ${progressPct}% Complete` : `Progression du jour — ${progressPct} % terminé`}
+                </Text>
+                <Text style={styles.progressCount}>{stats.collected}/{stats.assigned} {en ? 'Bins' : 'bacs'}</Text>
               </View>
               <View style={styles.progressBar}>
                 <LinearGradient
@@ -207,10 +215,14 @@ export default function HomeScreen({ navigation }) {
             {/* Connection problem */}
             {loadError && (
               <View style={styles.errorBox}>
-                <Text style={styles.errorTitle}>Couldn't load your route</Text>
-                <Text style={styles.errorText}>Check your internet connection. Pull down or tap retry to try again.</Text>
+                <Text style={styles.errorTitle}>{en ? "Couldn't load your route" : 'Impossible de charger votre itinéraire'}</Text>
+                <Text style={styles.errorText}>
+                  {en
+                    ? 'Check your internet connection. Pull down or tap retry to try again.'
+                    : 'Vérifiez votre connexion internet. Tirez vers le bas ou appuyez sur Réessayer.'}
+                </Text>
                 <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
-                  <Text style={styles.retryText}>Retry</Text>
+                  <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -220,7 +232,7 @@ export default function HomeScreen({ navigation }) {
               <>
                 <View style={styles.sectionHeader}>
                   <View style={styles.sectionTitleRow}>
-                    <Text style={styles.sectionTitle}>Assigned Reports</Text>
+                    <Text style={styles.sectionTitle}>{en ? 'Assigned Reports' : 'Signalements assignés'}</Text>
                     <View style={styles.countPill}>
                       <Text style={styles.countPillText}>{assignedReports.length}</Text>
                     </View>
@@ -246,7 +258,7 @@ export default function HomeScreen({ navigation }) {
                         {report.zone}{report.note ? ` · ${report.note}` : ''}
                       </Text>
                     </View>
-                    <Text style={styles.reportOpen}>OPEN</Text>
+                    <Text style={styles.reportOpen}>{en ? 'OPEN' : 'OUVRIR'}</Text>
                   </TouchableOpacity>
                 ))}
                 <View style={{ height: 10 }} />
@@ -257,11 +269,11 @@ export default function HomeScreen({ navigation }) {
             {priorityBins.length > 0 && (
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>
-                  <Text style={styles.sectionTitle}>Priority Bins</Text>
+                  <Text style={styles.sectionTitle}>{en ? 'Priority Bins' : 'Bacs prioritaires'}</Text>
                   <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.critical, marginLeft: 6 }} />
                 </View>
                 <TouchableOpacity onPress={() => navigation.navigate('Route')}>
-                  <Text style={styles.viewAll}>VIEW ALL</Text>
+                  <Text style={styles.viewAll}>{en ? 'VIEW ALL' : 'VOIR TOUT'}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -296,7 +308,7 @@ export default function HomeScreen({ navigation }) {
             <TouchableOpacity style={styles.binNavigateBtn} onPress={() => navigateToBin(item)} activeOpacity={0.8}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <MapPinIcon size={14} color={colors.accent} />
-                <Text style={styles.binNavigateText}>Navigate</Text>
+                <Text style={styles.binNavigateText}>{en ? 'Navigate' : 'Y aller'}</Text>
               </View>
             </TouchableOpacity>
           </TouchableOpacity>
@@ -308,7 +320,7 @@ export default function HomeScreen({ navigation }) {
                 <LinearGradient colors={gradients.greenButton} style={styles.navigateGradient}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                     <MapPinIcon size={14} color="#fff" />
-                    <Text style={styles.navigateText}>Navigate</Text>
+                    <Text style={styles.navigateText}>{en ? 'Navigate' : 'Y aller'}</Text>
                   </View>
                 </LinearGradient>
               </TouchableOpacity>

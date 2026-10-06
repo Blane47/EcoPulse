@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Image, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Image, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
@@ -8,10 +8,13 @@ import api from '../api/axios';
 import { playSend, playReceive } from '../utils/sounds';
 
 export default function ChatScreen({ navigation }) {
-  const { user } = useAuth();
+  const { user, language } = useAuth();
+  const en = language === 'en';
+  const locale = en ? 'en-GB' : 'fr-FR';
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [sending, setSending] = useState(false);
   const flatListRef = useRef(null);
   const pollRef = useRef(null);
@@ -27,14 +30,25 @@ export default function ChatScreen({ navigation }) {
         }
         return data;
       });
-      // Mark messages from admin as read
+      setLoadError(false);
+      // Mark messages from admin as read (best-effort: the admin's unread badge catches up on the next poll)
       await api.put(`/chat/${chatId}/read`).catch(() => {});
-    } catch {}
+      return true;
+    } catch {
+      // Polled every few seconds: a missed tick is retried on the next one
+      return false;
+    }
   }, [chatId]);
+
+  // First load (and Retry): the only fetch whose failure is shown to the collector
+  const loadMessages = useCallback(async () => {
+    const ok = await fetchMessages();
+    if (!ok) setLoadError(true);
+  }, [fetchMessages]);
 
   useEffect(() => {
     const init = async () => {
-      await fetchMessages();
+      await loadMessages();
       setLoading(false);
     };
     init();
@@ -42,21 +56,27 @@ export default function ChatScreen({ navigation }) {
     // Poll every 4 seconds for new messages
     pollRef.current = setInterval(fetchMessages, 2000);
     return () => clearInterval(pollRef.current);
-  }, [fetchMessages]);
+  }, [fetchMessages, loadMessages]);
 
   const handleSend = async () => {
     const trimmed = text.trim();
     if (!trimmed || sending) return;
 
     setSending(true);
-    setText('');
     try {
       const { data } = await api.post('/chat', { text: trimmed });
+      setText('');
       setMessages((prev) => [...prev, data]);
       playSend();
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
-      setText(trimmed);
+      // Keep the typed text so the collector can send it again
+      Alert.alert(
+        en ? 'Message not sent' : 'Message non envoyé',
+        en
+          ? 'Your message could not be sent. Check your internet connection and try again.'
+          : "Votre message n'a pas pu être envoyé. Vérifiez votre connexion internet et réessayez."
+      );
     } finally {
       setSending(false);
     }
@@ -64,17 +84,17 @@ export default function ChatScreen({ navigation }) {
 
   const formatTime = (dateStr) => {
     const d = new Date(dateStr);
-    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
     const today = new Date();
-    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === today.toDateString()) return en ? 'Today' : "Aujourd'hui";
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    if (d.toDateString() === yesterday.toDateString()) return en ? 'Yesterday' : 'Hier';
+    return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
   };
 
   const renderMessage = ({ item, index }) => {
@@ -116,8 +136,8 @@ export default function ChatScreen({ navigation }) {
             <Text style={styles.adminAvatarText}>A</Text>
           </View>
           <View>
-            <Text style={styles.headerTitle}>Admin Support</Text>
-            <Text style={styles.headerSubtitle}>EcoPulse HQ</Text>
+            <Text style={styles.headerTitle}>{en ? 'Admin Support' : 'Assistance admin'}</Text>
+            <Text style={styles.headerSubtitle}>{en ? 'EcoPulse HQ' : 'Siège EcoPulse'}</Text>
           </View>
         </View>
         <View style={styles.onlineDot} />
@@ -138,11 +158,25 @@ export default function ChatScreen({ navigation }) {
           contentContainerStyle={styles.messagesList}
           onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyTitle}>Start a conversation</Text>
-              <Text style={styles.emptySubtitle}>Send a message to your supervisor</Text>
-            </View>
+            loadError ? (
+              <View style={styles.emptyContainer}>
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorTitle}>{en ? "Couldn't load messages" : 'Impossible de charger les messages'}</Text>
+                  <Text style={styles.errorText}>
+                    {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+                  </Text>
+                  <TouchableOpacity style={styles.retryBtn} onPress={loadMessages}>
+                    <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyIcon}>💬</Text>
+                <Text style={styles.emptyTitle}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
+                <Text style={styles.emptySubtitle}>{en ? 'Send a message to your supervisor' : 'Envoyez un message à votre superviseur'}</Text>
+              </View>
+            )
           }
         />
 
@@ -151,7 +185,7 @@ export default function ChatScreen({ navigation }) {
           <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}
-              placeholder="Type a message..."
+              placeholder={en ? 'Type a message...' : 'Écrivez un message...'}
               placeholderTextColor={colors.textMuted}
               value={text}
               onChangeText={setText}
@@ -314,6 +348,21 @@ const styles = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
   emptySubtitle: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
+
+  // Load error
+  errorBox: {
+    marginHorizontal: 4,
+    backgroundColor: colors.criticalLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    padding: 16,
+    alignItems: 'center',
+  },
+  errorTitle: { fontSize: 14, fontWeight: '700', color: '#991b1b' },
+  errorText: { fontSize: 12, color: '#b91c1c', textAlign: 'center', marginTop: 4, lineHeight: 17 },
+  retryBtn: { marginTop: 12, backgroundColor: colors.critical, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 8 },
+  retryText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
   // Input
   inputBar: {

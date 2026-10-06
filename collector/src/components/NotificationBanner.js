@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Text, TouchableOpacity, View, StyleSheet } from 'react-native';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { notificationTitle } from '../utils/notificationTitle';
 import { navigate } from '../navigation/navigationRef';
 import { BellIcon } from './Icons';
 
@@ -9,6 +11,8 @@ const VISIBLE_MS = 6000;
 // Slides in from the top when a new notification arrives while the app is open
 export default function NotificationBanner() {
   const { banner, dismissBanner, markRead } = useNotifications();
+  const { language } = useAuth();
+  const en = language === 'en';
   const translateY = useRef(new Animated.Value(-160)).current;
 
   useEffect(() => {
@@ -38,7 +42,7 @@ export default function NotificationBanner() {
           <BellIcon size={18} color="#F59E0B" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.title} numberOfLines={1}>{banner.title}</Text>
+          <Text style={styles.title} numberOfLines={1}>{notificationTitle(banner, en)}</Text>
           {!!banner.body && <Text style={styles.body} numberOfLines={2}>{banner.body}</Text>}
         </View>
       </TouchableOpacity>

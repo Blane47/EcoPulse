@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Dimensions, Image, ImageBackground } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
+import { RecycleIcon } from '../components/Icons';
 import { playSuccess } from '../utils/sounds';
 
 const { width, height } = Dimensions.get('window');
@@ -9,7 +11,8 @@ const PIN_LENGTH = 6;
 const PAD_SIZE = 62;
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, language, selectLanguage } = useAuth();
+  const en = language === 'en';
   const [phone, setPhone] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -18,7 +21,7 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     setError('');
     if (!phone || pin.length < PIN_LENGTH) {
-      setError('Please enter phone and 6-digit PIN');
+      setError(en ? 'Please enter phone and 6-digit PIN' : 'Saisissez votre téléphone et votre PIN à 6 chiffres');
       return;
     }
     setLoading(true);
@@ -26,7 +29,18 @@ export default function LoginScreen() {
       await login(phone, pin);
       playSuccess();
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      const status = err.response?.status;
+      if (!err.response) {
+        setError(en ? 'Could not reach the server. Check your internet connection.' : 'Impossible de joindre le serveur. Vérifiez votre connexion internet.');
+      } else if (status === 401) {
+        setError(en ? 'Invalid phone or PIN' : 'Téléphone ou PIN incorrect');
+      } else if (status === 403) {
+        setError(en
+          ? 'Your account has been deactivated. Contact your supervisor.'
+          : 'Votre compte a été désactivé. Contactez votre superviseur.');
+      } else {
+        setError(en ? err.response.data?.message || 'Login failed' : 'Échec de la connexion');
+      }
     } finally {
       setLoading(false);
     }
@@ -47,6 +61,17 @@ export default function LoginScreen() {
       resizeMode="cover"
       imageStyle={{ opacity: 0.5 }}
     >
+      {/* Language — needed before signing in */}
+      <View style={styles.langToggle}>
+        {['en', 'fr'].map((lang, i) => (
+          <View key={lang} style={styles.langItem}>
+            {i > 0 && <Text style={styles.langDivider}>|</Text>}
+            <TouchableOpacity onPress={() => selectLanguage(lang)} activeOpacity={0.6} hitSlop={8}>
+              <Text style={[styles.langText, language === lang && styles.langTextActive]}>{lang.toUpperCase()}</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
 
       {/* Logo */}
       <View style={styles.logoSection}>
@@ -54,12 +79,12 @@ export default function LoginScreen() {
           <Image source={require('../assets/images/logo.png')} style={styles.logoImage} resizeMode="contain" />
         </View>
         <Text style={styles.brand}>EcoPulse Go</Text>
-        <Text style={styles.subtitle}>FIELD COLLECTOR PORTAL</Text>
+        <Text style={styles.subtitle}>{en ? 'FIELD COLLECTOR PORTAL' : 'PORTAIL DU COLLECTEUR'}</Text>
       </View>
 
       {/* Phone Input */}
       <View style={styles.formSection}>
-        <Text style={styles.label}>PHONE NUMBER</Text>
+        <Text style={styles.label}>{en ? 'PHONE NUMBER' : 'NUMÉRO DE TÉLÉPHONE'}</Text>
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.phoneInput}
@@ -74,7 +99,7 @@ export default function LoginScreen() {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* PIN */}
-        <Text style={[styles.label, { textAlign: 'center' }]}>ENTER PIN</Text>
+        <Text style={[styles.label, { textAlign: 'center' }]}>{en ? 'ENTER PIN' : 'SAISISSEZ VOTRE PIN'}</Text>
         <View style={styles.pinDotsRow}>
           {Array.from({ length: PIN_LENGTH }).map((_, i) => (
             <View key={i} style={[styles.pinDot, i < pin.length && styles.pinDotFilled]} />
@@ -112,18 +137,21 @@ export default function LoginScreen() {
               <ActivityIndicator color={colors.accent} />
             </View>
           ) : (
-            <View style={styles.loginBtnWrapper}>
-              <Image
-                source={require('../assets/images/signin-btn.png')}
-                style={styles.loginBtnImage}
-                resizeMode="cover"
-              />
-            </View>
+            <LinearGradient
+              colors={['#3b9460', '#5ebf89']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.loginBtn}
+            >
+              <RecycleIcon size={26} color="#fff" strokeWidth={4} />
+              <Text style={styles.loginBtnText}>{en ? 'Sign In' : 'Se connecter'}</Text>
+            </LinearGradient>
           )}
         </TouchableOpacity>
 
         <Text style={styles.footer}>
-          Having trouble? <Text style={styles.footerLink}>Contact your supervisor</Text>
+          {en ? 'Having trouble? ' : 'Un problème ? '}
+          <Text style={styles.footerLink}>{en ? 'Contact your supervisor' : 'Contactez votre superviseur'}</Text>
         </Text>
       </View>
     </ImageBackground>
@@ -138,6 +166,26 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.07,
     paddingBottom: 30,
   },
+
+  // Language toggle
+  langToggle: {
+    position: 'absolute',
+    top: 44,
+    right: 20,
+    zIndex: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  langItem: { flexDirection: 'row', alignItems: 'center' },
+  langDivider: { color: 'rgba(255,255,255,0.3)', fontSize: 12, marginHorizontal: 8 },
+  langText: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.5)', letterSpacing: 1 },
+  langTextActive: { color: colors.accent, fontWeight: '800' },
 
   // Logo
   logoSection: {
@@ -268,18 +316,16 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     marginTop: -10,
   },
-  loginBtnWrapper: {
+  loginBtn: {
     width: '100%',
     height: 56,
     borderRadius: 28,
-    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
   },
-  loginBtnImage: {
-    width: '102%',
-    height: '110%',
-    marginTop: -3,
-    marginLeft: -1,
-  },
+  loginBtnText: { fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
   loginLoading: {
     height: 56,
     alignItems: 'center',

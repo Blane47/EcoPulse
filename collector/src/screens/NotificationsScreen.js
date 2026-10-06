@@ -2,20 +2,25 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNotifications } from '../context/NotificationContext';
+import { useAuth } from '../context/AuthContext';
+import { notificationTitle } from '../utils/notificationTitle';
 import { colors, gradients, shadows } from '../theme';
 import { BellIcon } from '../components/Icons';
 
-function timeAgo(dateStr) {
+function timeAgo(dateStr, en) {
   const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return en ? 'Just now' : "À l'instant";
+  if (mins < 60) return en ? `${mins}m ago` : `il y a ${mins} min`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  if (hrs < 24) return en ? `${hrs}h ago` : `il y a ${hrs} h`;
+  const days = Math.floor(hrs / 24);
+  return en ? `${days}d ago` : `il y a ${days} j`;
 }
 
 export default function NotificationsScreen({ navigation }) {
   const { notifications, unread, refresh, markRead, markAllRead } = useNotifications();
+  const { language } = useAuth();
+  const en = language === 'en';
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
@@ -27,11 +32,11 @@ export default function NotificationsScreen({ navigation }) {
       headerRight: () =>
         unread > 0 ? (
           <TouchableOpacity onPress={markAllRead}>
-            <Text style={styles.markAll}>Mark all read</Text>
+            <Text style={styles.markAll}>{en ? 'Mark all read' : 'Tout marquer comme lu'}</Text>
           </TouchableOpacity>
         ) : null,
     });
-  }, [navigation, unread, markAllRead]);
+  }, [navigation, unread, markAllRead, en]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -56,8 +61,12 @@ export default function NotificationsScreen({ navigation }) {
         ListEmptyComponent={
           <View style={styles.empty}>
             <BellIcon size={36} color={colors.textMuted} />
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.emptyText}>Reports assigned to you by the admin will appear here.</Text>
+            <Text style={styles.emptyTitle}>{en ? 'No notifications yet' : 'Aucune notification pour le moment'}</Text>
+            <Text style={styles.emptyText}>
+              {en
+                ? 'Reports assigned to you by the admin will appear here.'
+                : "Les signalements que l'admin vous assigne apparaîtront ici."}
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -67,11 +76,11 @@ export default function NotificationsScreen({ navigation }) {
             activeOpacity={0.7}
           >
             <View style={styles.cardTop}>
-              <Text style={styles.title} numberOfLines={1}>{item.title}</Text>
+              <Text style={styles.title} numberOfLines={1}>{notificationTitle(item, en)}</Text>
               {!item.read && <View style={styles.dot} />}
             </View>
             {!!item.body && <Text style={styles.body}>{item.body}</Text>}
-            <Text style={styles.time}>{timeAgo(item.createdAt)}</Text>
+            <Text style={styles.time}>{timeAgo(item.createdAt, en)}</Text>
           </TouchableOpacity>
         )}
       />

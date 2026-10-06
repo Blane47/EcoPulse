@@ -7,14 +7,17 @@ const AuthContext = createContext();
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
+  const [language, setLanguage] = useState('en');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadAuth = async () => {
-      const [storedToken, storedUser] = await AsyncStorage.multiGet([
+      const [storedToken, storedUser, storedLang] = await AsyncStorage.multiGet([
         'collector_token',
         'collector_user',
+        'collector_lang',
       ]);
+      if (storedLang[1]) setLanguage(storedLang[1]);
       if (storedToken[1] && storedUser[1]) {
         setToken(storedToken[1]);
         const localUser = JSON.parse(storedUser[1]);
@@ -34,7 +37,9 @@ export function AuthProvider({ children }) {
             setUser(synced);
             await AsyncStorage.setItem('collector_user', JSON.stringify(synced));
           }
-        } catch {}
+        } catch {
+          // Offline or server down: keep the cached profile and sync on the next launch
+        }
       }
       setLoading(false);
     };
@@ -61,8 +66,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  // Kept across sign-outs so the login screen stays in the collector's language
+  const selectLanguage = async (lang) => {
+    await AsyncStorage.setItem('collector_lang', lang);
+    setLanguage(lang);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, authenticated: !!token, loading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, token, authenticated: !!token, loading, login, logout, updateUser, language, selectLanguage }}>
       {children}
     </AuthContext.Provider>
   );

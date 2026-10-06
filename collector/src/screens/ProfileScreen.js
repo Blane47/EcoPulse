@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ImageBackground, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
@@ -9,7 +9,7 @@ import { CameraIcon, LogoutIcon } from '../components/Icons';
 import api from '../api/axios';
 import TealHeader from '../components/TealHeader';
 
-function PerformanceCircle({ percentage = 94, size = 80, strokeWidth = 8 }) {
+function PerformanceCircle({ percentage = 0, size = 80, strokeWidth = 8 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
@@ -31,36 +31,45 @@ function PerformanceCircle({ percentage = 94, size = 80, strokeWidth = 8 }) {
 }
 
 export default function ProfileScreen({ navigation }) {
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, language, selectLanguage } = useAuth();
+  const en = language === 'en';
   const [uploading, setUploading] = useState(false);
-  const [profileStats, setProfileStats] = useState({ bins: 0, avgResponse: '—', issues: 0, daysActive: 0 });
+  const [profileStats, setProfileStats] = useState({ bins: 0, assigned: 0, issues: 0 });
+  const [statsError, setStatsError] = useState(false);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const { data } = await api.get('/collectors/me/route');
-        const bins = data.bins || [];
-        const collected = bins.filter(b => b.fillLevel === 0 || b.status === 'optimal').length;
-        setProfileStats({
-          bins: collected || 0,
-          avgResponse: `${Math.round(15 + Math.random() * 10)}min`,
-          issues: bins.filter(b => b.status === 'critical').length,
-          daysActive: Math.floor((Date.now() - new Date(user?.createdAt || Date.now()).getTime()) / 86400000) || 22,
-        });
-      } catch {}
-    };
-    fetchStats();
+  const fetchStats = useCallback(async () => {
+    try {
+      const { data } = await api.get('/collectors/me/route');
+      const bins = data.bins || [];
+      const collected = bins.filter(b => b.fillLevel === 0 || b.status === 'optimal').length;
+      setProfileStats({
+        bins: collected,
+        assigned: bins.length,
+        issues: bins.filter(b => b.status === 'critical').length,
+      });
+      setStatsError(false);
+    } catch {
+      setStatsError(true);
+    }
   }, []);
 
+  useEffect(() => { fetchStats(); }, [fetchStats]);
+
   const initials = (user?.name || 'C').split(' ').map((n) => n[0]).join('');
-  const name = user?.name || 'Collector';
-  const truck = user?.truck || 'No truck assigned';
+  const name = user?.name || (en ? 'Collector' : 'Collecteur');
+  const truck = user?.truck || (en ? 'No truck assigned' : 'Aucun camion assigné');
   const zone = user?.zone || '—';
+  const daysActive = user?.createdAt
+    ? String(Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000))
+    : '—';
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please allow access to your photo library.');
+      Alert.alert(
+        en ? 'Permission needed' : 'Autorisation requise',
+        en ? 'Please allow access to your photo library.' : "Veuillez autoriser l'accès à votre galerie photo."
+      );
       return;
     }
 
@@ -79,10 +88,19 @@ export default function ProfileScreen({ navigation }) {
     try {
       await api.put('/collectors/me/avatar', { avatar: base64 }, { timeout: 30000 });
       if (updateUser) updateUser({ ...user, avatar: base64 });
-      Alert.alert('Success', 'Profile picture updated!');
+      Alert.alert(en ? 'Success' : 'Succès', en ? 'Profile picture updated!' : 'Photo de profil mise à jour !');
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Unknown error';
-      Alert.alert('Error', `Failed to upload: ${msg}`);
+      let msg;
+      if (!err.response) {
+        msg = en
+          ? 'Your photo could not be uploaded. Check your internet connection and try again.'
+          : "Votre photo n'a pas pu être envoyée. Vérifiez votre connexion internet et réessayez.";
+      } else {
+        msg = en
+          ? `Failed to upload: ${err.response.data?.message || 'please try again.'}`
+          : "Échec de l'envoi de la photo. Veuillez réessayer.";
+      }
+      Alert.alert(en ? 'Upload failed' : "Échec de l'envoi", msg);
     } finally {
       setUploading(false);
     }
@@ -92,7 +110,7 @@ export default function ProfileScreen({ navigation }) {
     <LinearGradient colors={gradients.screenBgWarm} style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
-        <TealHeader title="My Profile" />
+        <TealHeader title={en ? 'My Profile' : 'Mon profil'} />
 
         {/* Profile Hero with real image */}
         <View style={styles.heroSection}>
@@ -125,38 +143,69 @@ export default function ProfileScreen({ navigation }) {
           </TouchableOpacity>
           <Text style={styles.name}>{name}</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>FIELD COLLECTOR</Text>
+            <Text style={styles.roleText}>{en ? 'FIELD COLLECTOR' : 'COLLECTEUR DE TERRAIN'}</Text>
           </View>
-          <Text style={styles.meta}>{truck} · {zone} · <Text style={[styles.activeStatus, user?.status === 'on-leave' && { color: colors.warning }, user?.status === 'inactive' && { color: colors.critical }]}>{user?.status === 'on-leave' ? 'On Leave' : user?.status === 'inactive' ? 'Inactive' : 'Active'}</Text></Text>
+          <Text style={styles.meta}>{truck} · {zone} · <Text style={[styles.activeStatus, user?.status === 'on-leave' && { color: colors.warning }, user?.status === 'inactive' && { color: colors.critical }]}>{user?.status === 'on-leave' ? (en ? 'On Leave' : 'En congé') : user?.status === 'inactive' ? (en ? 'Inactive' : 'Inactif') : (en ? 'Active' : 'Actif')}</Text></Text>
         </View>
 
         {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          {[
-            { label: 'BINS COLLECTED', value: String(profileStats.bins) },
-            { label: 'AVG RESPONSE', value: profileStats.avgResponse },
-            { label: 'CRITICAL BINS', value: String(profileStats.issues) },
-            { label: 'DAYS ACTIVE', value: String(profileStats.daysActive) },
-          ].map((stat) => (
-            <View key={stat.label} style={styles.statCard}>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-            </View>
-          ))}
-        </View>
+        {statsError ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTitle}>{en ? "Couldn't load your stats" : 'Impossible de charger vos statistiques'}</Text>
+            <Text style={styles.errorText}>
+              {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+            </Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchStats}>
+              <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.statsGrid}>
+            {[
+              { label: en ? 'BINS COLLECTED' : 'BACS COLLECTÉS', value: String(profileStats.bins) },
+              { label: en ? 'ASSIGNED BINS' : 'BACS ASSIGNÉS', value: String(profileStats.assigned) },
+              { label: en ? 'CRITICAL BINS' : 'BACS CRITIQUES', value: String(profileStats.issues) },
+              { label: en ? 'DAYS ACTIVE' : 'JOURS ACTIFS', value: daysActive },
+            ].map((stat) => (
+              <View key={stat.label} style={styles.statCard}>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+                <Text style={styles.statValue}>{stat.value}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Performance */}
         <View style={styles.perfSection}>
           <View style={styles.perfInfo}>
             <Text style={styles.perfTitle}>Performance</Text>
-            <Text style={styles.perfSubtitle}>Operational efficiency score</Text>
+            <Text style={styles.perfSubtitle}>{en ? 'Operational efficiency score' : "Score d'efficacité opérationnelle"}</Text>
           </View>
-          <PerformanceCircle percentage={user?.efficiency || 94} />
+          <PerformanceCircle percentage={user?.efficiency ?? 0} />
+        </View>
+
+        {/* Language */}
+        <View style={styles.langSection}>
+          <Text style={styles.langTitle}>{en ? 'Language' : 'Langue'}</Text>
+          <View style={styles.langSwitch}>
+            {['en', 'fr'].map((lang) => (
+              <TouchableOpacity
+                key={lang}
+                style={[styles.langOption, language === lang && styles.langOptionActive]}
+                onPress={() => selectLanguage(lang)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.langOptionText, language === lang && styles.langOptionTextActive]}>
+                  {lang.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         {/* Featured Collection */}
         <View style={styles.featuredSection}>
-          <Text style={styles.featuredLabel}>FEATURED COLLECTION</Text>
+          <Text style={styles.featuredLabel}>{en ? 'FEATURED COLLECTION' : 'COLLECTE EN VEDETTE'}</Text>
           <View style={styles.featuredCard}>
             <ImageBackground
               source={require('../assets/images/truck-featured.png')}
@@ -167,8 +216,10 @@ export default function ProfileScreen({ navigation }) {
                 colors={['transparent', 'rgba(0,0,0,0.6)']}
                 style={styles.featuredGradient}
               >
-                <Text style={styles.featuredTitle}>{zone} Route</Text>
-                <Text style={styles.featuredMeta}>{profileStats.bins} bins collected · {truck}</Text>
+                <Text style={styles.featuredTitle}>{en ? `${zone} Route` : `Itinéraire ${zone}`}</Text>
+                <Text style={styles.featuredMeta}>
+                  {statsError ? truck : `${profileStats.bins} ${en ? 'bins collected' : 'bacs collectés'} · ${truck}`}
+                </Text>
               </LinearGradient>
             </ImageBackground>
           </View>
@@ -176,7 +227,7 @@ export default function ProfileScreen({ navigation }) {
 
         {/* Contact Supervisor */}
         <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Chat')}>
-          <Text style={styles.contactText}>Chat with Admin</Text>
+          <Text style={styles.contactText}>{en ? 'Chat with Admin' : "Discuter avec l'admin"}</Text>
         </TouchableOpacity>
 
         {/* Logout */}
@@ -184,18 +235,18 @@ export default function ProfileScreen({ navigation }) {
           style={styles.logoutButton}
           onPress={() => {
             Alert.alert(
-              'Sign Out',
-              'Are you sure you want to sign out?',
+              en ? 'Sign Out' : 'Déconnexion',
+              en ? 'Are you sure you want to sign out?' : 'Voulez-vous vraiment vous déconnecter ?',
               [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Sign Out', style: 'destructive', onPress: logout },
+                { text: en ? 'Cancel' : 'Annuler', style: 'cancel' },
+                { text: en ? 'Sign Out' : 'Se déconnecter', style: 'destructive', onPress: logout },
               ]
             );
           }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <LogoutIcon size={18} color="#ef4444" />
-            <Text style={styles.logoutText}>Sign Out</Text>
+            <Text style={styles.logoutText}>{en ? 'Sign Out' : 'Se déconnecter'}</Text>
           </View>
         </TouchableOpacity>
       </ScrollView>
@@ -308,6 +359,22 @@ const styles = StyleSheet.create({
   },
   statValue: { fontSize: 26, fontWeight: '800', color: colors.text },
 
+  // Load error
+  errorBox: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: colors.criticalLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    padding: 16,
+    alignItems: 'center',
+  },
+  errorTitle: { fontSize: 14, fontWeight: '700', color: '#991b1b' },
+  errorText: { fontSize: 12, color: '#b91c1c', textAlign: 'center', marginTop: 4, lineHeight: 17 },
+  retryBtn: { marginTop: 12, backgroundColor: colors.critical, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 8 },
+  retryText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
   // Performance
   perfSection: {
     flexDirection: 'row',
@@ -331,6 +398,33 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.accent,
   },
+
+  // Language
+  langSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    backgroundColor: colors.cardGlass,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.1)',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    marginBottom: 20,
+    ...shadows.card,
+  },
+  langTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  langSwitch: {
+    flexDirection: 'row',
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 3,
+  },
+  langOption: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 10 },
+  langOptionActive: { backgroundColor: colors.accent },
+  langOptionText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
+  langOptionTextActive: { color: '#fff' },
 
   // Featured
   featuredSection: {
