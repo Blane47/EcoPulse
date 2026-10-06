@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { MessageSquare, Send, ArrowLeft, Circle } from 'lucide-react';
+import { MessageSquare, Send, ArrowLeft, Circle, Smartphone } from 'lucide-react';
 import api from '../api/axios';
+
+// Resident conversations use "community_<phone>" as their chat id
+const COMMUNITY_PREFIX = 'community_';
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -24,6 +27,25 @@ export default function Chat() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const pollRef = useRef(null);
+  // { chatId, text } so the notice only shows on the conversation it belongs to
+  const [resetNotice, setResetNotice] = useState(null);
+
+  // Residents sign in with the phone that first registered their number. If they
+  // change phones, unlink the number so they can register it again on the new one.
+  const resetResidentDevice = async () => {
+    const phone = selectedChat.slice(COMMUNITY_PREFIX.length);
+    const ok = window.confirm(
+      `Unlink ${phone} from the resident's current phone?\n\nOnly do this after confirming who you are talking to. ` +
+      'The next phone that registers this number gets access to this conversation and their reports.'
+    );
+    if (!ok) return;
+    try {
+      await api.put(`/community/users/${encodeURIComponent(phone)}/reset-device`);
+      setResetNotice({ chatId: selectedChat, text: `${phone} can now be registered on a new phone.` });
+    } catch (err) {
+      setResetNotice({ chatId: selectedChat, text: err.response?.data?.message || 'Could not reset the device link.' });
+    }
+  };
 
   // Fetch chat list
   const fetchChats = useCallback(async () => {
@@ -162,7 +184,20 @@ export default function Chat() {
                   <span className="text-[10px] text-gray-400">Online</span>
                 </div>
               </div>
+              {selectedChat.startsWith(COMMUNITY_PREFIX) && (
+                <button
+                  onClick={resetResidentDevice}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-card-border text-xs font-medium text-gray-600 hover:bg-gray-50"
+                  title="Unlink this number from the resident's current phone"
+                >
+                  <Smartphone size={14} />
+                  Move to new phone
+                </button>
+              )}
             </div>
+            {resetNotice?.chatId === selectedChat && (
+              <div className="px-5 py-2 text-xs bg-green-50 text-green-700 border-b border-green-100">{resetNotice.text}</div>
+            )}
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 bg-gray-50/50">

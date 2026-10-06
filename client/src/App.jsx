@@ -11,6 +11,7 @@ import Settings from './pages/Settings';
 import Chat from './pages/Chat';
 import CollectorProfile from './pages/CollectorProfile';
 import CommunityReports from './pages/CommunityReports';
+import Applications from './pages/Applications';
 import Login from './pages/Login';
 import AddBinModal from './components/ui/AddBinModal';
 
@@ -41,6 +42,7 @@ function AppRoutes() {
           <Route path="/collectors/:id" element={<CollectorProfile />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/community-reports" element={<CommunityReports />} />
+          <Route path="/applications" element={<Applications />} />
           <Route path="/chat" element={<Chat />} />
           <Route path="/settings" element={<Settings />} />
         </Route>

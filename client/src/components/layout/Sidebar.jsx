@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   Megaphone,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,6 +20,7 @@ const navItems = [
   { to: '/collectors', icon: Users, label: 'Collectors' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
   { to: '/community-reports', icon: Megaphone, label: 'Community' },
+  { to: '/applications', icon: UserPlus, label: 'Applications' },
   { to: '/chat', icon: MessageSquare, label: 'Chat' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
