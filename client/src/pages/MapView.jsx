@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import Badge from '../components/ui/Badge';
-import { getBins } from '../api/bins';
+import { getBins, collectBin } from '../api/bins';
 import { zoneOverview } from '../data/mockData';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -40,6 +40,8 @@ const BUEA_CENTER = [4.155, 9.265];
 export default function MapView() {
   const [bins, setBins] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [collectingId, setCollectingId] = useState(null);
+  const [collectError, setCollectError] = useState({ id: null, message: '' });
 
   useEffect(() => {
     const fetchBins = async () => {
@@ -52,6 +54,22 @@ export default function MapView() {
     };
     fetchBins();
   }, []);
+
+  const handleMarkCollected = async (id) => {
+    setCollectingId(id);
+    setCollectError({ id: null, message: '' });
+    try {
+      const updated = await collectBin(id);
+      // Only take the collection fields; the response's assignedCollector isn't populated
+      setBins((prev) => prev.map((b) => (b._id === id
+        ? { ...b, fillLevel: updated.fillLevel, status: updated.status, lastCollected: updated.lastCollected }
+        : b)));
+    } catch (err) {
+      setCollectError({ id, message: err.response?.data?.message || 'Could not mark this bin as collected.' });
+    } finally {
+      setCollectingId(null);
+    }
+  };
 
   const filtered = filter === 'all' ? bins : bins.filter((b) => b.status === filter);
 
@@ -117,10 +135,19 @@ export default function MapView() {
                     <p>LAT: {bin.coordinates?.lat?.toFixed(4)}</p>
                     <p>LNG: {bin.coordinates?.lng?.toFixed(4)}</p>
                   </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                    <button style={{ flex: 1, backgroundColor: '#0f1623', color: '#fff', fontSize: 12, padding: '6px 0', borderRadius: 6, fontWeight: 500, border: 'none', cursor: 'pointer' }}>Mark Collected</button>
-                    <button style={{ flex: 1, border: '1px solid #e5e7eb', fontSize: 12, padding: '6px 0', borderRadius: 6, fontWeight: 500, color: '#4b5563', backgroundColor: '#fff', cursor: 'pointer' }}>Logistics</button>
-                  </div>
+                  <button
+                    onClick={() => handleMarkCollected(bin._id)}
+                    disabled={collectingId === bin._id}
+                    style={{
+                      width: '100%', marginTop: 12, backgroundColor: '#0f1623', color: '#fff', fontSize: 12, padding: '6px 0', borderRadius: 6, fontWeight: 500, border: 'none',
+                      cursor: collectingId === bin._id ? 'wait' : 'pointer', opacity: collectingId === bin._id ? 0.6 : 1,
+                    }}
+                  >
+                    {collectingId === bin._id ? 'Saving…' : 'Mark Collected'}
+                  </button>
+                  {collectError.id === bin._id && (
+                    <p style={{ fontSize: 12, color: '#b91c1c', marginTop: 8 }}>{collectError.message}</p>
+                  )}
                 </div>
               </Popup>
             </Marker>
@@ -150,10 +177,6 @@ export default function MapView() {
             </div>
           ))}
         </div>
-
-        <button style={{ width: '100%', marginTop: 16, color: '#22c55e', fontSize: 14, fontWeight: 500, background: 'none', border: 'none', cursor: 'pointer' }}>
-          View All Zones →
-        </button>
       </div>
     </div>
   );

@@ -51,9 +51,9 @@ export default function Sidebar({ open, onClose }) {
 
   return (
     <>
-    {open && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={onClose} aria-hidden="true" />}
+    {open && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden print:hidden" onClick={onClose} aria-hidden="true" />}
     <aside
-      className={`fixed left-0 top-0 h-screen w-[220px] bg-sidebar flex flex-col z-50 transition-transform duration-200 lg:translate-x-0 ${
+      className={`fixed left-0 top-0 h-screen w-[220px] bg-sidebar flex flex-col z-50 transition-transform duration-200 lg:translate-x-0 print:hidden ${
         open ? 'translate-x-0' : '-translate-x-full'
       }`}
     >

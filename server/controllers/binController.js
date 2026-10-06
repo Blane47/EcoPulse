@@ -1,4 +1,5 @@
 const Bin = require('../models/Bin');
+const { isCollector } = require('../middleware/auth');
 
 exports.getAllBins = async (req, res, next) => {
   try {
@@ -47,8 +48,11 @@ exports.createBin = async (req, res, next) => {
 
 exports.updateBin = async (req, res, next) => {
   try {
-    const bin = await Bin.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    // findByIdAndUpdate skips the save hook, so keep status in step with fillLevel here
+    const updates = { ...req.body };
+    if (updates.fillLevel != null) updates.status = Bin.statusForFill(Number(updates.fillLevel));
+    const bin = await Bin.findByIdAndUpdate(req.params.id, updates, {
+      returnDocument: 'after',
       runValidators: true,
     });
     if (!bin) return res.status(404).json({ message: 'Bin not found' });
@@ -89,7 +93,12 @@ exports.collectBin = async (req, res, next) => {
     const bin = await Bin.findById(req.params.id);
     if (!bin) return res.status(404).json({ message: 'Bin not found' });
 
-    const { lat, lng, photo } = req.body;
+    const { lat, lng, photo } = req.body || {};
+
+    // Collectors must prove they're at the bin; admins can mark a bin collected from the dashboard
+    if (isCollector(req.user) && (lat == null || lng == null)) {
+      return res.status(400).json({ message: 'Your GPS location is required to mark a bin as collected.' });
+    }
 
     // GPS proximity check — collector must be within 100m of the bin
     if (lat != null && lng != null && bin.coordinates?.lat && bin.coordinates?.lng) {

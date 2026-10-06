@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Download, FileText } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
@@ -5,12 +6,59 @@ import {
 } from 'recharts';
 import StatCard from '../components/ui/StatCard';
 import Badge from '../components/ui/Badge';
+import { getCollectors } from '../api/collectors';
+import { getBins } from '../api/bins';
+import { toCsv, downloadCsv } from '../utils/csv';
 import {
   reportKPIs, dailyCollectionTrends, binTypeDistribution,
   overdueBinsByZone, collectors,
 } from '../data/mockData';
 
+// GET /bins is paginated; walk every page so the export has all bins
+const fetchAllBins = async () => {
+  const all = [];
+  for (let page = 1; ; page++) {
+    const { bins = [], totalPages = 1 } = await getBins({ page, limit: 100 });
+    all.push(...bins);
+    if (page >= totalPages || bins.length === 0) return all;
+  }
+};
+
 export default function Reports() {
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  // The charts and KPIs below are sample data, so the CSV is built from live collectors and bins instead
+  const handleDownloadCsv = async () => {
+    setExporting(true);
+    setExportError('');
+    try {
+      const [collectorList, binList] = await Promise.all([getCollectors(), fetchAllBins()]);
+      const rows = [
+        ['Collectors'],
+        ['Name', 'Phone', 'Zone', 'Status', 'Truck', 'Bins Assigned', 'Collections Today', 'Collections This Month', 'Efficiency (%)'],
+        ...collectorList.map((c) => [
+          c.name, c.phone, c.zone, c.status, c.truck,
+          c.binsAssigned, c.collectionsToday, c.collectionsMonth, c.efficiency,
+        ]),
+        [],
+        ['Bins'],
+        ['Bin ID', 'Location', 'Zone', 'Type', 'Fill Level (%)', 'Status', 'Last Collected'],
+        ...binList.map((b) => [
+          b.binId, b.location, b.zone, b.type, b.fillLevel, b.status,
+          b.lastCollected ? new Date(b.lastCollected).toISOString() : '',
+        ]),
+      ];
+      const date = new Date().toISOString().slice(0, 10);
+      downloadCsv(`ecopulse-report-${date}.csv`, toCsv(rows));
+    } catch (err) {
+      console.error('CSV export error:', err);
+      setExportError(err.response?.data?.message || 'Could not prepare the CSV. Check your connection and try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div>
       {/* Header */}
@@ -19,18 +67,27 @@ export default function Reports() {
           <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
           <p className="text-sm text-gray-500">Track collection performance and zone efficiency across the city</p>
         </div>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">
-            <Download size={16} />
-            Download CSV
-          </button>
-          <button
-            className="flex items-center gap-2 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
-          >
-            <FileText size={16} />
-            Export PDF
-          </button>
+        <div className="flex flex-col gap-2 sm:items-end print:hidden">
+          <div className="flex gap-2">
+            <button
+              onClick={handleDownloadCsv}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2.5 border border-card-border rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-60 disabled:cursor-wait"
+            >
+              <Download size={16} />
+              {exporting ? 'Preparing…' : 'Download CSV'}
+            </button>
+            {/* "Save as PDF" from the print dialog; print:hidden drops the sidebar, navbar and these buttons */}
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
+            >
+              <FileText size={16} />
+              Export PDF
+            </button>
+          </div>
+          {exportError && <p className="text-xs text-red-600 sm:text-right" role="alert">{exportError}</p>}
         </div>
       </div>
 

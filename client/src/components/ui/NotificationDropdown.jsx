@@ -28,8 +28,8 @@ export default function NotificationDropdown({ isOpen, onClose }) {
       const items = [];
 
       // Fetch critical bins
-      const { data: bins } = await api.get('/bins');
-      const criticalBins = bins.filter(b => b.status === 'critical');
+      // /bins is paginated and returns { bins, ... }; ask for the critical ones only
+      const { data: { bins: criticalBins } } = await api.get('/bins', { params: { status: 'critical', limit: 100 } });
       criticalBins.forEach(bin => {
         items.push({
           id: `bin-${bin._id}`,

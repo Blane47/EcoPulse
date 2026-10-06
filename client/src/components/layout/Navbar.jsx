@@ -16,12 +16,12 @@ export default function Navbar({ onMenuClick }) {
     const fetchCount = async () => {
       try {
         const [binsRes, reportsRes, collectorsRes, chatsRes] = await Promise.all([
-          api.get('/bins'),
+          api.get('/bins/stats'),
           api.get('/reports'),
           api.get('/collectors'),
           api.get('/chat'),
         ]);
-        const critical = binsRes.data.filter(b => b.status === 'critical' || b.status === 'warning').length;
+        const critical = binsRes.data.critical + binsRes.data.warning;
         const pending = reportsRes.data.filter(r => r.status === 'pending').length;
         const unavailable = collectorsRes.data.filter(c => c.status === 'on-leave' || c.status === 'inactive').length;
         const unreadChats = chatsRes.data.filter(c => c.unread > 0).length;
@@ -36,7 +36,7 @@ export default function Navbar({ onMenuClick }) {
   }, []);
 
   return (
-    <header className="h-16 bg-white border-b border-card-border flex items-center justify-between gap-3 px-4 sm:px-6 sticky top-0 z-30 lg:static">
+    <header className="h-16 bg-white border-b border-card-border flex items-center justify-between gap-3 px-4 sm:px-6 sticky top-0 z-30 lg:static print:hidden">
       {/* Menu button + brand (drawer mode only) */}
       <div className="flex items-center gap-3 lg:hidden">
         <button onClick={onMenuClick} className="p-1.5 -ml-1.5 text-gray-600 hover:text-gray-900" aria-label="Open menu">

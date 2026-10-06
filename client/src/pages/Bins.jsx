@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Filter } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import ProgressBar from '../components/ui/ProgressBar';
 import { getBins } from '../api/bins';
@@ -63,6 +63,7 @@ export default function Bins({ onAddBin }) {
         </button>
       </div>
 
+      {/* Two selects per row on phones, the status select taking the full second row */}
       <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 mb-4">
         <select value={zoneFilter} onChange={(e) => { setZoneFilter(e.target.value); setCurrentPage(1); }} className="px-3 py-2 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30">
           <option value="">All Zones</option>
@@ -74,16 +75,13 @@ export default function Bins({ onAddBin }) {
           <option>Recyclable</option>
           <option>Organic</option>
         </select>
-        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="px-3 py-2 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30">
+        <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }} className="col-span-2 px-3 py-2 border border-card-border rounded-lg text-sm bg-white text-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/30">
           <option value="">All Status</option>
           <option value="critical">Critical</option>
           <option value="warning">Warning</option>
           <option value="optimal">Optimal</option>
           <option value="empty">Empty</option>
         </select>
-        <button className="flex items-center gap-1.5 px-3 py-2 border border-card-border rounded-lg text-sm text-gray-500 hover:bg-gray-50">
-          <Filter size={14} /> More Filters
-        </button>
       </div>
 
       <div className="bg-white rounded-card border border-card-border overflow-x-auto">
@@ -97,7 +95,6 @@ export default function Bins({ onAddBin }) {
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase w-40">Fill Level</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase">Last Collected</th>
               <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase">Collector</th>
-              <th className="text-left py-3 px-4 text-xs font-medium text-gray-400 uppercase">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -110,13 +107,10 @@ export default function Bins({ onAddBin }) {
                 <td className="py-3 px-4"><ProgressBar value={bin.fillLevel} /></td>
                 <td className="py-3 px-4 text-gray-500">{formatLastCollected(bin.lastCollected)}</td>
                 <td className="py-3 px-4 text-gray-600">{bin.assignedCollector?.name || '—'}</td>
-                <td className="py-3 px-4">
-                  <button className="text-accent hover:text-accent-dark text-xs font-medium">View</button>
-                </td>
               </tr>
             ))}
             {binsData.length === 0 && !loading && (
-              <tr><td colSpan={8} className="text-center py-8 text-gray-400">No bins found</td></tr>
+              <tr><td colSpan={7} className="text-center py-8 text-gray-400">No bins found</td></tr>
             )}
           </tbody>
         </table>

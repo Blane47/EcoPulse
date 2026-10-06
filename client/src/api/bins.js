@@ -20,6 +20,13 @@ export const updateBin = async (id, binData) => {
   return data;
 };
 
+// Empties the bin (fillLevel 0, status 'empty', lastCollected now). Admins don't send a location, so
+// the server's 100m proximity check (required for collectors) doesn't apply
+export const collectBin = async (id) => {
+  const { data } = await api.patch(`/bins/${id}/collect`, {});
+  return data;
+};
+
 export const deleteBin = async (id) => {
   const { data } = await api.delete(`/bins/${id}`);
   return data;

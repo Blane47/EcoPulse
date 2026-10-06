@@ -13,6 +13,8 @@ export default function AddBinModal({ isOpen, onClose }) {
     fillLevel: 20,
     collector: '',
   });
+  const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState('');
 
   if (!isOpen) return null;
 
@@ -24,6 +26,31 @@ export default function AddBinModal({ isOpen, onClose }) {
 
   const handleChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  // Fill the GPS fields from the browser (needs https or localhost and the user's permission)
+  const handleUseLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Location is not supported by this browser. Enter the coordinates manually.');
+      return;
+    }
+    setLocating(true);
+    setLocationError('');
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setFormData((prev) => ({ ...prev, lat: coords.latitude.toFixed(6), lng: coords.longitude.toFixed(6) }));
+        setLocating(false);
+      },
+      (err) => {
+        setLocationError(
+          err.code === err.PERMISSION_DENIED
+            ? 'Location access was denied. Allow it in your browser or enter the coordinates manually.'
+            : 'Could not get your location. Enter the coordinates manually.'
+        );
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleSubmit = (e) => {
@@ -129,10 +156,16 @@ export default function AddBinModal({ isOpen, onClose }) {
                   className="px-3 py-2.5 border border-card-border rounded-lg text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-accent/30"
                 />
               </div>
-              <button type="button" className="flex items-center gap-1 text-accent text-xs font-medium mt-2 hover:underline">
+              <button
+                type="button"
+                onClick={handleUseLocation}
+                disabled={locating}
+                className="flex items-center gap-1 text-accent text-xs font-medium mt-2 hover:underline disabled:opacity-60 disabled:no-underline disabled:cursor-wait"
+              >
                 <MapPin size={12} />
-                Use Current Location
+                {locating ? 'Locating…' : 'Use Current Location'}
               </button>
+              {locationError && <p className="text-xs text-red-600 mt-1" role="alert">{locationError}</p>}
             </div>
 
             {/* Assigned Collector */}
