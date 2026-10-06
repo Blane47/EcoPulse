@@ -19,6 +19,8 @@ export default function MyReportsScreen({ navigation, route }) {
   const [reports, setReports] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reportsError, setReportsError] = useState(false);
+  const [announcementsError, setAnnouncementsError] = useState(false);
 
   // Switch tab when navigated with params
   useEffect(() => {
@@ -33,8 +35,9 @@ export default function MyReportsScreen({ navigation, route }) {
         const { data } = await api.get('/reports/mine');
         setReports(data);
       }
+      setReportsError(false);
     } catch {
-      // offline fallback
+      setReportsError(true);
     }
     setLoading(false);
   }, [profile?.phone]);
@@ -43,8 +46,10 @@ export default function MyReportsScreen({ navigation, route }) {
     try {
       const { data } = await api.get('/announcements', { params: { zone } });
       setAnnouncements(data);
+      setAnnouncementsError(false);
     } catch {
       setAnnouncements([]);
+      setAnnouncementsError(true);
     }
   }, [zone]);
 
@@ -166,7 +171,17 @@ export default function MyReportsScreen({ navigation, route }) {
             ) : null
           }
           ListEmptyComponent={
-            !loading && (
+            !loading && (reportsError ? (
+              <View style={styles.empty}>
+                <Text style={[styles.errorTitle, { color: colors.text }]}>{en ? 'Could not load your reports' : 'Impossible de charger vos signalements'}</Text>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
+                  {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+                </Text>
+                <TouchableOpacity style={styles.reportBtn} onPress={() => { setLoading(true); fetchReports(); }}>
+                  <Text style={styles.reportBtnText}>{en ? 'Retry' : 'Réessayer'}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <View style={styles.empty}>
                 <View style={{ marginBottom: 8 }}><ReportIcon size={28} color={colors.textMuted} /></View>
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>{en ? 'No reports yet' : 'Aucun signalement'}</Text>
@@ -174,7 +189,7 @@ export default function MyReportsScreen({ navigation, route }) {
                   <Text style={styles.reportBtnText}>{en ? 'Report a Bin' : 'Signaler un Bac'}</Text>
                 </TouchableOpacity>
               </View>
-            )
+            ))
           }
         />
       ) : (
@@ -216,6 +231,19 @@ export default function MyReportsScreen({ navigation, route }) {
             );
           }}
           ListEmptyComponent={
+            announcementsError ? (
+              <View style={styles.notificationsEmpty}>
+                <Text style={[styles.notificationsEmptyText, { color: colors.text }]}>
+                  {en ? 'Could not load announcements' : 'Impossible de charger les annonces'}
+                </Text>
+                <Text style={[styles.notificationsEmptySub, { color: colors.textSecondary }]}>
+                  {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+                </Text>
+                <TouchableOpacity style={styles.reportBtn} onPress={fetchAnnouncements}>
+                  <Text style={styles.reportBtnText}>{en ? 'Retry' : 'Réessayer'}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
             <View style={styles.notificationsEmpty}>
               <View style={{ marginBottom: 16 }}><BellIcon size={44} color={colors.textMuted} /></View>
               <Text style={[styles.notificationsEmptyText, { color: colors.text }]}>
@@ -238,6 +266,7 @@ export default function MyReportsScreen({ navigation, route }) {
                 </Text>
               </View>
             </View>
+            )
           }
         />
       )}
@@ -362,6 +391,7 @@ const styles = StyleSheet.create({
   // Empty
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyText: { fontSize: 14, color: colors.textMuted, marginBottom: 16 },
+  errorTitle: { fontSize: 15, fontWeight: '600', color: colors.text, marginBottom: 6 },
   reportBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
   reportBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList, Image,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
 } from 'react-native';
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
@@ -17,8 +17,10 @@ export default function ChatScreen() {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const flatListRef = useRef(null);
   const pollRef = useRef(null);
+  const loadedRef = useRef(false);
 
   const fetchMessages = async () => {
     if (!profile?.phone) return;
@@ -30,10 +32,13 @@ export default function ChatScreen() {
         }
         return data;
       });
+      loadedRef.current = true;
+      setLoadError(false);
       // Mark admin messages as read
       await api.put('/community/chat/read');
     } catch {
-      // offline
+      // Polling (and marking read) stays silent; only a failed first load shows the retry message
+      if (!loadedRef.current) setLoadError(true);
     }
     setLoading(false);
   };
@@ -54,8 +59,14 @@ export default function ChatScreen() {
       setText('');
       playSend();
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
-    } catch {
-      // offline
+    } catch (err) {
+      // Keep the typed text so the resident can resend
+      Alert.alert(
+        en ? 'Message not sent' : 'Message non envoyé',
+        err.response
+          ? (en ? 'EcoPulse could not accept your message. Please try again.' : 'EcoPulse n\'a pas pu accepter votre message. Veuillez réessayer.')
+          : (en ? 'No internet connection. Check your connection and try again.' : 'Pas de connexion internet. Vérifiez votre connexion et réessayez.')
+      );
     }
     setSending(false);
   };
@@ -131,7 +142,17 @@ export default function ChatScreen() {
       </View>
 
       {/* Messages */}
-      {messages.length === 0 ? (
+      {loadError && messages.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>{en ? 'Could not load messages' : 'Impossible de charger les messages'}</Text>
+          <Text style={[styles.emptySub, { color: colors.textSecondary }]}>
+            {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchMessages(); }}>
+            <Text style={styles.retryBtnText}>{en ? 'Retry' : 'Réessayer'}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : messages.length === 0 ? (
         <View style={styles.emptyContainer}>
           <View style={{ marginBottom: 12 }}><ChatIcon size={40} color={colors.textMuted} /></View>
           <Text style={[styles.emptyTitle, { color: colors.text }]}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
@@ -269,6 +290,8 @@ const styles = StyleSheet.create({
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: colors.text, marginBottom: 8 },
   emptySub: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  retryBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16 },
+  retryBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
   // Input
   inputBar: {

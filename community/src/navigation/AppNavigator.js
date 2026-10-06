@@ -260,7 +260,9 @@ function MainTabs() {
       try {
         const { data } = await api.get('/community/chat/unread');
         setUnreadChat(data.unread > 0);
-      } catch {}
+      } catch {
+        // Badge check runs every 8s; stay silent and retry on the next tick
+      }
     };
     check();
     const interval = setInterval(check, 8000);

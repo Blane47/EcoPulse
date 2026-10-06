@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useZone } from '../context/ZoneContext';
@@ -125,7 +125,7 @@ async function cancelReminder(notifId) {
   if (notifId && notifId !== 'saved' && Notifications) {
     try {
       await Notifications.cancelScheduledNotificationAsync(notifId);
-    } catch {}
+    } catch {} // Already fired or gone; the reminder is still removed below
   }
 }
 
@@ -155,6 +155,7 @@ export default function ScheduleScreen({ navigation }) {
   const [schedule, setSchedule] = useState([]);
   const [reminders, setReminders] = useState({});
   const [selectedDay, setSelectedDay] = useState(null);
+  const [loadError, setLoadError] = useState(false);
 
   const now = new Date();
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -166,17 +167,18 @@ export default function ScheduleScreen({ navigation }) {
     { _id: '3', day: 'Friday', time: '7:00 AM - 12:00 PM', wasteTypes: ['General', 'Organic', 'Recyclable'] },
   ];
 
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const { data } = await api.get(`/schedule/${zone}`);
-        setSchedule(data.length ? data : defaultSchedule);
-      } catch {
-        setSchedule(defaultSchedule);
-      }
-    };
-    fetchSchedule();
+  const fetchSchedule = useCallback(async () => {
+    try {
+      const { data } = await api.get(`/schedule/${zone}`);
+      setSchedule(data.length ? data : defaultSchedule);
+      setLoadError(false);
+    } catch {
+      setSchedule([]);
+      setLoadError(true);
+    }
   }, [zone]);
+
+  useEffect(() => { fetchSchedule(); }, [fetchSchedule]);
 
   // Load saved reminders from storage
   useEffect(() => {
@@ -184,7 +186,7 @@ export default function ScheduleScreen({ navigation }) {
       try {
         const saved = await AsyncStorage.getItem(`reminders_${zone}`);
         if (saved) setReminders(JSON.parse(saved));
-      } catch {}
+      } catch {} // Unreadable local data just means no reminders are shown as set
     })();
   }, [zone]);
 
@@ -378,6 +380,20 @@ export default function ScheduleScreen({ navigation }) {
           {en ? 'UPCOMING COLLECTIONS' : 'PROCHAINES COLLECTES'}
         </Text>
 
+        {loadError && (
+          <View style={[styles.errorCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.errorTitle, { color: colors.text }]}>
+              {en ? 'Could not load the schedule' : 'Impossible de charger le calendrier'}
+            </Text>
+            <Text style={[styles.errorText, { color: colors.textSecondary }]}>
+              {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+            </Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={fetchSchedule} activeOpacity={0.7}>
+              <Text style={styles.retryBtnText}>{en ? 'Retry' : 'Réessayer'}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {[...schedule].sort((a, b) => {
           const dateA = getNextDateForDay(a.day, a.time);
           const dateB = getNextDateForDay(b.day, b.time);
@@ -548,6 +564,17 @@ const styles = StyleSheet.create({
   collectionType: { fontSize: 14, fontWeight: '700', color: colors.text },
   collectionTime: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   reminderLabel: { fontSize: 10, color: colors.accent, marginTop: 3, fontWeight: '600' },
+  errorCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  errorTitle: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  errorText: { fontSize: 12, textAlign: 'center', marginTop: 4 },
+  retryBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10, marginTop: 12 },
+  retryBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
   // Reminder
   reminderCard: {

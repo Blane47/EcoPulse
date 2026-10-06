@@ -74,8 +74,10 @@ export default function HomeScreen({ navigation }) {
   const [nextCollectionDate, setNextCollectionDate] = useState(null);
   const [countdown, setCountdown] = useState('');
   const [hasUnread, setHasUnread] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   const fetchData = useCallback(async () => {
+    let failed = false;
     try {
       const { data } = await api.get('/bins', { params: { zone } });
       const list = data.bins || [];
@@ -88,6 +90,7 @@ export default function HomeScreen({ navigation }) {
         healthy: total > 0 ? Math.round((optimal / total) * 100) : 0,
       });
     } catch {
+      failed = true;
       setStats({ total: 0, critical: 0, healthy: 0 });
     }
     try {
@@ -109,9 +112,9 @@ export default function HomeScreen({ navigation }) {
         }
       }
     } catch {
-      setNextCollection({ day: 'Thursday', time: '7:00 AM', wasteTypes: ['General', 'Recyclable'] });
-      setNextCollectionDate(getNextCollectionDate('Thursday', '7:00 AM'));
+      failed = true;
     }
+    setLoadError(failed);
   }, [zone]);
 
   // Live countdown timer
@@ -141,7 +144,7 @@ export default function HomeScreen({ navigation }) {
         try {
           const { data: announcements } = await api.get('/announcements', { params: { zone } });
           hasNew = announcements.some(a => new Date(a.createdAt).getTime() > lastTime);
-        } catch {}
+        } catch {} // Best-effort badge check; retried on the next poll
 
         // Check report updates
         if (!hasNew && profile?.phone) {
@@ -151,11 +154,11 @@ export default function HomeScreen({ navigation }) {
               r.status !== 'pending' &&
               new Date(r.updatedAt).getTime() > lastTime
             );
-          } catch {}
+          } catch {} // Best-effort badge check; retried on the next poll
         }
 
         setHasUnread(hasNew);
-      } catch {}
+      } catch {} // Polls every 15s, so failures stay silent rather than alerting
     };
     checkUpdates();
     const interval = setInterval(checkUpdates, 15000);
@@ -220,14 +223,20 @@ export default function HomeScreen({ navigation }) {
               {en ? 'NEXT COLLECTION' : 'PROCHAINE COLLECTE'}
             </Text>
             <Text style={styles.collectionTime}>
-              {nextCollectionDate ? formatCollectionDay(nextCollectionDate) : 'Tomorrow'} {nextCollection?.time || '7:00 AM'}
+              {nextCollectionDate
+                ? `${formatCollectionDay(nextCollectionDate)} ${nextCollection?.time || ''}`
+                : loadError
+                  ? (en ? 'Schedule unavailable' : 'Horaire indisponible')
+                  : (en ? 'Not scheduled yet' : 'Pas encore programmée')}
             </Text>
-            <View style={styles.countdownBadge}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <ClockIcon size={14} color="#F59E0B" />
-                <Text style={styles.countdownText}>{countdown || 'Loading...'}</Text>
+            {nextCollectionDate && (
+              <View style={styles.countdownBadge}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <ClockIcon size={14} color="#F59E0B" />
+                  <Text style={styles.countdownText}>{countdown || (en ? 'Loading...' : 'Chargement...')}</Text>
+                </View>
               </View>
-            </View>
+            )}
           </View>
         </View>
       </LinearGradient>
@@ -248,6 +257,17 @@ export default function HomeScreen({ navigation }) {
       {/* Zone Status */}
       <View style={styles.zoneStatusSection}>
         <Text style={styles.zoneStatusTitle}>{(zone || 'ZONE').toUpperCase()} ZONE STATUS</Text>
+        {loadError ? (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorTitle}>{en ? 'Could not load zone data' : 'Impossible de charger les données de la zone'}</Text>
+            <Text style={styles.errorText}>
+              {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+            </Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={onRefresh} activeOpacity={0.7}>
+              <Text style={styles.retryBtnText}>{en ? 'Retry' : 'Réessayer'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
         <View style={styles.zoneStatsRow}>
           <View style={styles.zoneStat}>
             <Text style={[styles.zoneStatValue, { color: colors.text }]}>{stats.total}</Text>
@@ -270,6 +290,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
         </View>
+        )}
       </View>
 
       {/* Recent Activity */}
@@ -422,6 +443,19 @@ const styles = StyleSheet.create({
   zoneStatDivider: { width: 1, height: 40, backgroundColor: colors.cardBorder },
   zoneStatValue: { fontSize: 24, fontWeight: '800', color: colors.text },
   zoneStatLabel: { fontSize: 11, color: colors.textSecondary, marginTop: 4 },
+  errorCard: {
+    backgroundColor: colors.card,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: 18,
+    alignItems: 'center',
+    ...shadows.card,
+  },
+  errorTitle: { fontSize: 14, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  errorText: { fontSize: 12, color: colors.textSecondary, textAlign: 'center', marginTop: 4 },
+  retryBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10, marginTop: 12 },
+  retryBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 
   // Recent Activity
   recentCard: {

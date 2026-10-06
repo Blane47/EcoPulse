@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { useZone } from '../context/ZoneContext';
@@ -176,26 +176,41 @@ export default function NearbyMapScreen({ navigation }) {
   const en = language === 'en';
   const [bins, setBins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    const fetchBins = async () => {
-      try {
-        const { data } = await api.get('/bins', { params: { zone } });
-        const list = data.bins || data;
-        setBins(Array.isArray(list) ? list : []);
-      } catch {
-        setBins([
-          { _id: '1', binId: 'BIN-001', location: 'UB Junction', fillLevel: 89, status: 'critical', coordinates: { lat: 4.1597, lng: 9.2920 } },
-          { _id: '2', binId: 'BIN-042', location: 'Mile 17', fillLevel: 62, status: 'warning', coordinates: { lat: 4.1550, lng: 9.2850 } },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBins();
+  const fetchBins = useCallback(async () => {
+    try {
+      const { data } = await api.get('/bins', { params: { zone } });
+      const list = data.bins || data;
+      setBins(Array.isArray(list) ? list : []);
+      setLoadError(false);
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [zone]);
 
+  useEffect(() => { fetchBins(); }, [fetchBins]);
+
   if (loading) return <View style={styles.loading}><ActivityIndicator size="large" color={colors.accent} /></View>;
+
+  if (loadError) {
+    return (
+      <View style={styles.container}>
+        <TealHeader title={en ? 'Nearby Bins' : 'Bacs Proches'} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>{en ? 'Could not load bins' : 'Impossible de charger les bacs'}</Text>
+          <Text style={styles.errorText}>
+            {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
+          </Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); fetchBins(); }}>
+            <Text style={styles.retryBtnText}>{en ? 'Retry' : 'Réessayer'}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -224,6 +239,11 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   loading: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   map: { flex: 1 },
+  errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, backgroundColor: colors.background },
+  errorTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 8, textAlign: 'center' },
+  errorText: { fontSize: 13, color: colors.textSecondary, textAlign: 'center', lineHeight: 19 },
+  retryBtn: { backgroundColor: colors.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12, marginTop: 16 },
+  retryBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
   legendOverlay: {
     position: 'absolute',
     top: 12,
