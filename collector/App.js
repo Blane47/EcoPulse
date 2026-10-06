@@ -3,6 +3,7 @@ import { View, Image, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts, Orbitron_900Black } from '@expo-google-fonts/orbitron';
 import { AuthProvider } from './src/context/AuthContext';
+import { NotificationProvider } from './src/context/NotificationContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
@@ -31,7 +32,9 @@ export default function App() {
   return (
     <AuthProvider>
       <StatusBar style="dark" />
-      <AppNavigator />
+      <NotificationProvider>
+        <AppNavigator />
+      </NotificationProvider>
     </AuthProvider>
   );
 }

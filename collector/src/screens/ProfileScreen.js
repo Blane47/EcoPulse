@@ -54,8 +54,8 @@ export default function ProfileScreen({ navigation }) {
 
   const initials = (user?.name || 'C').split(' ').map((n) => n[0]).join('');
   const name = user?.name || 'Collector';
-  const truck = user?.truck || 'Truck #204';
-  const zone = user?.zone || 'Molyko Zone';
+  const truck = user?.truck || 'No truck assigned';
+  const zone = user?.zone || '—';
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, RefreshControl, Image, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { useFocusEffect } from '@react-navigation/native';
 import GradientBrand from '../components/GradientBrand';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
 import { BellIcon, MapPinIcon, CheckIcon, ClockIcon } from '../components/Icons';
@@ -13,13 +15,19 @@ const truckBanner = require('../assets/images/truck-banner.png');
 
 export default function HomeScreen({ navigation }) {
   const { user } = useAuth();
+  const { unread, notifications } = useNotifications();
   const [stats, setStats] = useState({ assigned: 0, collected: 0, remaining: 0 });
   const [priorityBins, setPriorityBins] = useState([]);
+  const [assignedReports, setAssignedReports] = useState([]);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
-      const { data } = await api.get('/collectors/me/route');
+      const [{ data }, { data: reports }] = await Promise.all([
+        api.get('/collectors/me/route'),
+        api.get('/reports/assigned/me'),
+      ]);
       const bins = data.bins || [];
       const collected = bins.filter((b) => b.fillLevel === 0 || b.status === 'optimal').length;
       setStats({ assigned: bins.length, collected, remaining: bins.length - collected });
@@ -29,16 +37,19 @@ export default function HomeScreen({ navigation }) {
           .sort((a, b) => b.fillLevel - a.fillLevel)
           .slice(0, 5)
       );
+      setAssignedReports(reports.filter((r) => r.status === 'assigned'));
+      setLoadError(false);
     } catch {
-      setStats({ assigned: 32, collected: 8, remaining: 24 });
-      setPriorityBins([
-        { _id: '1', binId: 'BIN-001', location: 'UB Main Gate, Molyko', fillLevel: 92, status: 'critical', distance: '0.3km', coordinates: { lat: 4.1548, lng: 9.2985 } },
-        { _id: '2', binId: 'BIN-077', location: 'Bonduma Health Centre', fillLevel: 88, status: 'critical', distance: '0.7km', coordinates: { lat: 4.1592, lng: 9.2845 } },
-      ]);
+      setLoadError(true);
     }
   }, []);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  // Refresh when returning to this tab and whenever a new notification arrives
+  useFocusEffect(useCallback(() => { fetchData(); }, [fetchData]));
+  const latestNotificationId = notifications[0]?._id;
+  useEffect(() => {
+    if (latestNotificationId) fetchData();
+  }, [fetchData, latestNotificationId]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -86,9 +97,14 @@ export default function HomeScreen({ navigation }) {
             >
               <View style={styles.tealHeaderRow}>
                 <GradientBrand fontSize={20} />
-                <View style={styles.tealNotif}>
+                <TouchableOpacity style={styles.tealNotif} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
                   <BellIcon size={20} color="#F59E0B" />
-                </View>
+                  {unread > 0 && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
               </View>
               {/* Greeting row */}
               <View style={styles.greetingRow}>
@@ -188,6 +204,55 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
 
+            {/* Connection problem */}
+            {loadError && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorTitle}>Couldn't load your route</Text>
+                <Text style={styles.errorText}>Check your internet connection. Pull down or tap retry to try again.</Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={fetchData}>
+                  <Text style={styles.retryText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Reports assigned from the dashboard */}
+            {assignedReports.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <View style={styles.sectionTitleRow}>
+                    <Text style={styles.sectionTitle}>Assigned Reports</Text>
+                    <View style={styles.countPill}>
+                      <Text style={styles.countPillText}>{assignedReports.length}</Text>
+                    </View>
+                  </View>
+                </View>
+                {assignedReports.map((report) => (
+                  <TouchableOpacity
+                    key={report._id}
+                    style={styles.reportCard}
+                    onPress={() => navigation.navigate('AssignedReport', { id: report._id })}
+                    activeOpacity={0.7}
+                  >
+                    {report.photo ? (
+                      <Image source={{ uri: report.photo }} style={styles.reportThumb} />
+                    ) : (
+                      <View style={[styles.reportThumb, styles.reportThumbEmpty]}>
+                        <MapPinIcon size={20} color="#7c3aed" />
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.reportLocation} numberOfLines={1}>{report.location}</Text>
+                      <Text style={styles.reportMeta} numberOfLines={1}>
+                        {report.zone}{report.note ? ` · ${report.note}` : ''}
+                      </Text>
+                    </View>
+                    <Text style={styles.reportOpen}>OPEN</Text>
+                  </TouchableOpacity>
+                ))}
+                <View style={{ height: 10 }} />
+              </>
+            )}
+
             {/* Priority Bins Header */}
             {priorityBins.length > 0 && (
               <View style={styles.sectionHeader}>
@@ -217,7 +282,7 @@ export default function HomeScreen({ navigation }) {
                   <Text style={styles.binId}>{item.binId}</Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
                     <MapPinIcon size={12} color={colors.textSecondary} />
-                    <Text style={styles.binDistance}>{item.distance || '0.3km'} away</Text>
+                    <Text style={styles.binDistance} numberOfLines={1}>{item.location}</Text>
                   </View>
                 </View>
               </View>
@@ -280,6 +345,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  badge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    backgroundColor: colors.critical,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#0f3d52',
+  },
+  badgeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
   greetingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,6 +553,50 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   sectionDot: { fontSize: 10 },
   viewAll: { fontSize: 12, fontWeight: '600', color: colors.accent },
+
+  // Load error
+  errorBox: {
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: colors.criticalLight,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    padding: 16,
+    alignItems: 'center',
+  },
+  errorTitle: { fontSize: 14, fontWeight: '700', color: '#991b1b' },
+  errorText: { fontSize: 12, color: '#b91c1c', textAlign: 'center', marginTop: 4, lineHeight: 17 },
+  retryBtn: { marginTop: 12, backgroundColor: colors.critical, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 8 },
+  retryText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+
+  // Assigned reports
+  countPill: {
+    marginLeft: 8,
+    backgroundColor: '#ede9fe',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  countPillText: { fontSize: 11, fontWeight: '700', color: '#7c3aed' },
+  reportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    backgroundColor: colors.cardGlass,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(124,58,237,0.25)',
+    padding: 12,
+    ...shadows.card,
+  },
+  reportThumb: { width: 48, height: 48, borderRadius: 12 },
+  reportThumbEmpty: { backgroundColor: '#ede9fe', alignItems: 'center', justifyContent: 'center' },
+  reportLocation: { fontSize: 14, fontWeight: '700', color: colors.text },
+  reportMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  reportOpen: { fontSize: 11, fontWeight: '700', color: '#7c3aed', letterSpacing: 0.5 },
 
   // Bin Cards
   binCard: {

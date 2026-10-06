@@ -13,6 +13,10 @@ import BinDetailScreen from '../screens/BinDetailScreen';
 import MapScreen from '../screens/MapScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ChatScreen from '../screens/ChatScreen';
+import NotificationsScreen from '../screens/NotificationsScreen';
+import AssignedReportScreen from '../screens/AssignedReportScreen';
+import NotificationBanner from '../components/NotificationBanner';
+import { navigationRef } from './navigationRef';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -95,29 +99,29 @@ export default function AppNavigator() {
 
   if (loading) return null;
 
+  const detailHeader = {
+    headerShown: true,
+    headerTintColor: colors.accent,
+    headerStyle: { backgroundColor: '#eef5ee' },
+    headerTitleStyle: { fontWeight: '700' },
+  };
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {authenticated ? (
           <>
             <Stack.Screen name="MainTabs" component={HomeTabs} />
-            <Stack.Screen
-              name="BinDetail"
-              component={BinDetailScreen}
-              options={{
-                headerShown: true,
-                title: 'Bin Details',
-                headerTintColor: colors.accent,
-                headerStyle: { backgroundColor: '#eef5ee' },
-                headerTitleStyle: { fontWeight: '700' },
-              }}
-            />
+            <Stack.Screen name="BinDetail" component={BinDetailScreen} options={{ ...detailHeader, title: 'Bin Details' }} />
             <Stack.Screen name="Chat" component={ChatScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ ...detailHeader, title: 'Notifications' }} />
+            <Stack.Screen name="AssignedReport" component={AssignedReportScreen} options={{ ...detailHeader, title: 'Assigned Report' }} />
           </>
         ) : (
           <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
+      {authenticated && <NotificationBanner />}
     </NavigationContainer>
   );
 }
