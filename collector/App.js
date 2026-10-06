@@ -1,18 +1,21 @@
 import { useState, useEffect } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts, Orbitron_900Black } from '@expo-google-fonts/orbitron';
 import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   const [splash, setSplash] = useState(true);
+  // Brand font used by GradientBrand; if it fails to load the app falls back to the system font
+  const [fontsLoaded, fontError] = useFonts({ Orbitron_900Black });
 
   useEffect(() => {
     const timer = setTimeout(() => setSplash(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (splash) {
+  if (splash || (!fontsLoaded && !fontError)) {
     return (
       <View style={styles.splashContainer}>
         <StatusBar style="dark" />
