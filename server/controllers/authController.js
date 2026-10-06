@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Collector = require('../models/Collector');
 const { normalizePhone } = require('../utils/phone');
+const { isCollector } = require('../middleware/auth');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -49,6 +50,55 @@ exports.login = async (req, res, next) => {
 
 exports.getMe = async (req, res) => {
   res.json(req.user);
+};
+
+// Dashboard users (admins/staff) update their own name and email
+exports.updateProfile = async (req, res, next) => {
+  try {
+    if (isCollector(req.user)) {
+      return res.status(403).json({ message: 'Collector profiles are managed by an admin' });
+    }
+    const { name, email } = req.body;
+    const updates = {};
+    if (name?.trim()) updates.name = name.trim();
+    if (email?.trim()) updates.email = email.trim().toLowerCase();
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, { returnDocument: 'after', runValidators: true });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already in use' });
+    }
+    next(error);
+  }
+};
+
+exports.changePassword = async (req, res, next) => {
+  try {
+    if (isCollector(req.user)) {
+      return res.status(403).json({ message: 'Collectors sign in with a PIN set by an admin' });
+    }
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Please provide current and new password' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!(await user.comparePassword(currentPassword))) {
+      // 400, not 401: the dashboard treats any 401 as an expired session and signs the user out
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword; // hashed by the model's pre-save hook
+    await user.save();
+    res.json({ message: 'Password updated' });
+  } catch (error) {
+    next(error);
+  }
 };
 
 exports.collectorLogin = async (req, res, next) => {
