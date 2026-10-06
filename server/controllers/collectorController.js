@@ -1,5 +1,6 @@
 const Collector = require('../models/Collector');
 const Bin = require('../models/Bin');
+const { normalizePhone } = require('../utils/phone');
 
 exports.getAllCollectors = async (req, res, next) => {
   try {
@@ -26,10 +27,18 @@ exports.getCollectorById = async (req, res, next) => {
   }
 };
 
+const PIN_FORMAT = /^\d{6}$/;
+
 exports.createCollector = async (req, res, next) => {
   try {
+    if (req.body.pin !== undefined && !PIN_FORMAT.test(String(req.body.pin))) {
+      return res.status(400).json({ message: 'PIN must be exactly 6 digits' });
+    }
+    // Phone is normalised and the PIN hashed by the model's hooks
     const collector = await Collector.create(req.body);
-    res.status(201).json(collector);
+    const created = collector.toObject();
+    delete created.pin;
+    res.status(201).json(created);
   } catch (error) {
     next(error);
   }
@@ -37,8 +46,23 @@ exports.createCollector = async (req, res, next) => {
 
 exports.updateCollector = async (req, res, next) => {
   try {
-    const collector = await Collector.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
+    // findByIdAndUpdate skips document hooks, so normalise and hash here
+    const updates = { ...req.body };
+    delete updates._id;
+    if (updates.phone !== undefined && updates.phone !== '') {
+      const phone = normalizePhone(updates.phone);
+      if (!phone) return res.status(400).json({ message: 'Enter a valid phone number' });
+      updates.phone = phone;
+    }
+    if (updates.pin !== undefined) {
+      if (!PIN_FORMAT.test(String(updates.pin))) {
+        return res.status(400).json({ message: 'PIN must be exactly 6 digits' });
+      }
+      updates.pin = await Collector.hashPin(updates.pin);
+    }
+
+    const collector = await Collector.findByIdAndUpdate(req.params.id, updates, {
+      returnDocument: 'after',
       runValidators: true,
     });
     if (!collector) return res.status(404).json({ message: 'Collector not found' });

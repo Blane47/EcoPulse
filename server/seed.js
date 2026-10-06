@@ -7,6 +7,7 @@ const Collector = require('./models/Collector');
 const Activity = require('./models/Activity');
 const Schedule = require('./models/Schedule');
 const Report = require('./models/Report');
+const Notification = require('./models/Notification');
 
 const seedData = async () => {
   try {
@@ -21,6 +22,7 @@ const seedData = async () => {
       Activity.deleteMany({}),
       Schedule.deleteMany({}),
       Report.deleteMany({}),
+      Notification.deleteMany({}),
     ]);
     console.log('Cleared existing data');
 
@@ -34,13 +36,14 @@ const seedData = async () => {
     console.log('Admin user created: admin@ecopulse.cm / admin123');
 
     // Create collectors
-    const collectors = await Collector.insertMany([
-      { name: 'Emmanuel Ngwa', phone: '237670000001', pin: '123456', truck: 'Truck #204', zone: 'Molyko', status: 'active', binsAssigned: 32, collectionsToday: 8, collectionsMonth: 184, efficiency: 96 },
-      { name: 'Samuel Tabi', phone: '237670000002', pin: '123456', truck: 'Truck #112', zone: 'Bonduma', status: 'on-leave', binsAssigned: 45, collectionsToday: 0, collectionsMonth: 142, efficiency: 88 },
-      { name: 'Francis Bih', phone: '237670000003', pin: '123456', truck: 'Truck #305', zone: 'Buea Town', status: 'active', binsAssigned: 28, collectionsToday: 12, collectionsMonth: 210, efficiency: 94 },
-      { name: 'Amadou Jallow', phone: '237670000004', pin: '123456', truck: 'Truck #201', zone: 'Molyko', status: 'active', binsAssigned: 30, collectionsToday: 0, collectionsMonth: 68, efficiency: 82 },
-      { name: 'Kevin Besong', phone: '237670000005', pin: '123456', truck: 'Truck #108', zone: 'Great Soppo', status: 'active', binsAssigned: 25, collectionsToday: 5, collectionsMonth: 187, efficiency: 90 },
-      { name: 'Abiba Lum', phone: '237670000006', pin: '123456', truck: 'Truck #402', zone: 'Great Soppo', status: 'active', binsAssigned: 36, collectionsToday: 15, collectionsMonth: 240, efficiency: 98 },
+    // create() (not insertMany) so the model hashes each PIN
+    const collectors = await Collector.create([
+      { name: 'Emmanuel Ngwa', phone: '+237670000001', pin: '123456', truck: 'Truck #204', zone: 'Molyko', status: 'active', binsAssigned: 32, collectionsToday: 8, collectionsMonth: 184, efficiency: 96 },
+      { name: 'Samuel Tabi', phone: '+237670000002', pin: '123456', truck: 'Truck #112', zone: 'Bonduma', status: 'on-leave', binsAssigned: 45, collectionsToday: 0, collectionsMonth: 142, efficiency: 88 },
+      { name: 'Francis Bih', phone: '+237670000003', pin: '123456', truck: 'Truck #305', zone: 'Buea Town', status: 'active', binsAssigned: 28, collectionsToday: 12, collectionsMonth: 210, efficiency: 94 },
+      { name: 'Amadou Jallow', phone: '+237670000004', pin: '123456', truck: 'Truck #201', zone: 'Molyko', status: 'active', binsAssigned: 30, collectionsToday: 0, collectionsMonth: 68, efficiency: 82 },
+      { name: 'Kevin Besong', phone: '+237670000005', pin: '123456', truck: 'Truck #108', zone: 'Great Soppo', status: 'active', binsAssigned: 25, collectionsToday: 5, collectionsMonth: 187, efficiency: 90 },
+      { name: 'Abiba Lum', phone: '+237670000006', pin: '123456', truck: 'Truck #402', zone: 'Great Soppo', status: 'active', binsAssigned: 36, collectionsToday: 15, collectionsMonth: 240, efficiency: 98 },
     ]);
     console.log(`${collectors.length} collectors created`);
 

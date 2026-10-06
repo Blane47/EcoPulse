@@ -37,4 +37,14 @@ const authorize = (...roles) => {
   };
 };
 
-module.exports = { protect, authorize };
+// protect() loads either a User (admin/staff) or a Collector into req.user
+const isCollector = (user) => user?.constructor?.modelName === 'Collector';
+
+const collectorOnly = (req, res, next) => {
+  if (!isCollector(req.user)) {
+    return res.status(403).json({ message: 'Collector account required' });
+  }
+  next();
+};
+
+module.exports = { protect, authorize, isCollector, collectorOnly };

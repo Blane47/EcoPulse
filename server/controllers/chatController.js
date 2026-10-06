@@ -1,4 +1,15 @@
 const Message = require('../models/Message');
+const { isCollector } = require('../middleware/auth');
+
+// A collector's conversation with the admin uses the collector's id as chatId.
+// Collectors may only touch their own chat; admins may open any chat.
+const resolveChatId = (user, requestedChatId) => {
+  if (isCollector(user)) {
+    const own = user._id.toString();
+    return !requestedChatId || requestedChatId === own ? own : null;
+  }
+  return user.role === 'admin' ? requestedChatId : null;
+};
 
 // Get all chats (admin view) — returns latest message per unique chatId
 exports.getChats = async (req, res, next) => {
@@ -30,7 +41,8 @@ exports.getChats = async (req, res, next) => {
 // Get messages for a specific chat
 exports.getMessages = async (req, res, next) => {
   try {
-    const { chatId } = req.params;
+    const chatId = resolveChatId(req.user, req.params.chatId);
+    if (!chatId) return res.status(403).json({ message: 'Not authorized for this chat' });
     const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
     res.json(messages);
   } catch (error) {
@@ -41,15 +53,18 @@ exports.getMessages = async (req, res, next) => {
 // Send a message
 exports.sendMessage = async (req, res, next) => {
   try {
-    const { chatId, text } = req.body;
+    const { text } = req.body;
     const user = req.user;
+    if (!text?.trim()) return res.status(400).json({ message: 'Message text is required' });
 
-    const isCollector = !!user.pin;
+    const chatId = resolveChatId(user, req.body.chatId);
+    if (!chatId) return res.status(403).json({ message: 'Not authorized for this chat' });
+
     const message = await Message.create({
-      chatId: chatId || user._id.toString(),
+      chatId,
       sender: user._id.toString(),
       senderName: user.name,
-      senderRole: isCollector ? 'collector' : 'admin',
+      senderRole: isCollector(user) ? 'collector' : 'admin',
       text,
     });
     res.status(201).json(message);
@@ -58,14 +73,15 @@ exports.sendMessage = async (req, res, next) => {
   }
 };
 
-// Mark messages as read
+// Mark the other side's messages as read
 exports.markRead = async (req, res, next) => {
   try {
-    const { chatId } = req.params;
-    await Message.updateMany(
-      { chatId, read: false, senderRole: { $ne: 'admin' } },
-      { read: true }
-    );
+    const chatId = resolveChatId(req.user, req.params.chatId);
+    if (!chatId) return res.status(403).json({ message: 'Not authorized for this chat' });
+
+    // A collector reads the admin's replies; the admin reads everyone else's messages
+    const senderRole = isCollector(req.user) ? 'admin' : { $ne: 'admin' };
+    await Message.updateMany({ chatId, read: false, senderRole }, { read: true });
     res.json({ success: true });
   } catch (error) {
     next(error);

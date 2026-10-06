@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Collector = require('../models/Collector');
+const { normalizePhone } = require('../utils/phone');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -57,8 +58,9 @@ exports.collectorLogin = async (req, res, next) => {
       return res.status(400).json({ message: 'Please provide phone and PIN' });
     }
 
-    const collector = await Collector.findOne({ phone });
-    if (!collector || collector.pin !== pin) {
+    const normalized = normalizePhone(phone);
+    const collector = normalized && await Collector.findOne({ phone: normalized }).select('+pin');
+    if (!collector || !(await collector.comparePin(pin))) {
       return res.status(401).json({ message: 'Invalid phone or PIN' });
     }
 
@@ -67,7 +69,9 @@ exports.collectorLogin = async (req, res, next) => {
     }
 
     const token = generateToken(collector._id);
-    res.json({ user: collector, token });
+    const user = collector.toObject();
+    delete user.pin;
+    res.json({ user, token });
   } catch (error) {
     next(error);
   }
