@@ -17,6 +17,7 @@ const Chat = lazy(() => import('./pages/Chat'));
 const CollectorProfile = lazy(() => import('./pages/CollectorProfile'));
 const CommunityReports = lazy(() => import('./pages/CommunityReports'));
 const Applications = lazy(() => import('./pages/Applications'));
+const Leave = lazy(() => import('./pages/Leave'));
 
 function ProtectedRoute({ children }) {
   const { authenticated } = useAuth();
@@ -43,6 +44,7 @@ function AppRoutes() {
           <Route path="/map" element={<MapView />} />
           <Route path="/collectors" element={<Collectors />} />
           <Route path="/collectors/:id" element={<CollectorProfile />} />
+          <Route path="/leave" element={<Leave />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/community-reports" element={<CommunityReports />} />
           <Route path="/applications" element={<Applications />} />

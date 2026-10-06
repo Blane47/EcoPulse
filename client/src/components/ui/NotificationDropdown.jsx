@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, FileText, Truck, CheckCircle, X, Clock, MessageCircle, Camera } from 'lucide-react';
+import { AlertTriangle, FileText, Truck, CheckCircle, X, Clock, MessageCircle, Camera, CalendarOff } from 'lucide-react';
 import api from '../../api/axios';
+import { formatRange, formatDay, leaveLength, pluralDays, leavePhase } from '../../utils/leave';
 
 export default function NotificationDropdown({ isOpen, onClose }) {
   const navigate = useNavigate();
@@ -93,9 +94,33 @@ export default function NotificationDropdown({ isOpen, onClose }) {
         });
       });
 
+      // Leave requests waiting for review, and approved leave (for "until" on collectors who are off).
+      // Admin-only endpoint, so it mustn't take the rest of the list down if it's refused.
+      const noLeave = { data: { leaves: [], today: '' } };
+      const [{ data: pendingLeave }, { data: approvedLeave }] = await Promise.all([
+        api.get('/leave', { params: { status: 'pending' } }).catch(() => noLeave),
+        api.get('/leave', { params: { status: 'approved' } }).catch(() => noLeave),
+      ]);
+      [...pendingLeave.leaves].reverse().forEach(leave => {
+        items.push({
+          id: `leave-${leave._id}`,
+          type: 'leave',
+          icon: CalendarOff,
+          color: 'text-violet-500',
+          bg: 'bg-violet-50',
+          title: `Leave request — ${leave.collector?.name || 'Collector'}`,
+          subtitle: `${formatRange(leave.startDate, leave.endDate, pendingLeave.today)} · ${pluralDays(leaveLength(leave))}`,
+          time: formatTime(leave.createdAt),
+          to: '/leave',
+        });
+      });
+      const leaveNow = (collectorId) => approvedLeave.leaves.find(l =>
+        l.collector?._id === collectorId && leavePhase(l, approvedLeave.today) === 'current');
+
       // Fetch collectors on leave / inactive
       const { data: collectors } = await api.get('/collectors');
       collectors.filter(c => c.status === 'on-leave' || c.status === 'inactive').forEach(col => {
+        const leave = col.status === 'on-leave' && leaveNow(col._id);
         items.push({
           id: `col-${col._id}`,
           type: 'collector',
@@ -103,7 +128,7 @@ export default function NotificationDropdown({ isOpen, onClose }) {
           color: col.status === 'inactive' ? 'text-gray-500' : 'text-yellow-500',
           bg: col.status === 'inactive' ? 'bg-gray-50' : 'bg-yellow-50',
           title: `${col.name} is ${col.status === 'on-leave' ? 'on leave' : 'inactive'}`,
-          subtitle: `${col.zone || 'Unassigned'} zone`,
+          subtitle: `${col.zone || 'Unassigned'} zone${leave ? ` — until ${formatDay(leave.endDate, approvedLeave.today)}` : ''}`,
           time: 'Today',
           to: `/collectors/${col._id}`,
         });

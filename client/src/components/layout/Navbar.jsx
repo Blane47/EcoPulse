@@ -18,18 +18,21 @@ export default function Navbar({ onMenuClick }) {
   useEffect(() => {
     const fetchCount = async () => {
       try {
-        const [binsRes, reportsRes, collectorsRes, chatsRes] = await Promise.all([
+        const [binsRes, reportsRes, collectorsRes, chatsRes, leaveRes] = await Promise.all([
           api.get('/bins/stats'),
           api.get('/reports'),
           api.get('/collectors'),
           api.get('/chat'),
+          // Admin-only; a refusal mustn't zero the whole count
+          api.get('/leave', { params: { status: 'pending' } }).catch(() => ({ data: { leaves: [] } })),
         ]);
         const critical = binsRes.data.critical + binsRes.data.warning;
         // New reports, and collectors' proof photos waiting for an admin's review
         const reportsToHandle = reportsRes.data.filter(r => r.status === 'pending' || r.status === 'awaiting_review').length;
         const unavailable = collectorsRes.data.filter(c => c.status === 'on-leave' || c.status === 'inactive').length;
         const unreadChats = chatsRes.data.filter(c => c.unread > 0).length;
-        setNotifCount(critical + reportsToHandle + unavailable + unreadChats);
+        const leaveRequests = leaveRes.data.leaves.length;
+        setNotifCount(critical + reportsToHandle + unavailable + unreadChats + leaveRequests);
       } catch {
         // ignore
       }

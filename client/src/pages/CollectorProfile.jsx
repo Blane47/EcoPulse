@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock, KeyRound, AlertTriangle } from 'lucide-react';
 import { getCollectorById, updateCollector, resetCollectorPassword } from '../api/collectors';
+import { formatRange, formatDay, leaveLength, pluralDays, leavePhase, leavePill } from '../utils/leave';
 import api from '../api/axios';
 import Badge from '../components/ui/Badge';
 import AssignZoneModal from '../components/ui/AssignZoneModal';
@@ -12,6 +13,8 @@ export default function CollectorProfile() {
   const navigate = useNavigate();
   const [collector, setCollector] = useState(null);
   const [activity, setActivity] = useState([]);
+  // { leaves, today } from the leave API; null if it couldn't be loaded
+  const [leave, setLeave] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showAssignZone, setShowAssignZone] = useState(false);
   const [showAssignTruck, setShowAssignTruck] = useState(false);
@@ -36,6 +39,13 @@ export default function CollectorProfile() {
       setActivity(Array.isArray(data) ? data : data.activities || []);
     } catch {
       setActivity([]);
+    }
+
+    try {
+      const { data } = await api.get('/leave', { params: { collector: id } });
+      setLeave(data);
+    } catch {
+      setLeave(null);
     }
 
     setLoading(false);
@@ -109,6 +119,8 @@ export default function CollectorProfile() {
   const initials = collector.name?.split(' ').map((n) => n[0]).join('').toUpperCase() || '?';
   const effColor = collector.efficiency >= 90 ? 'text-green-500' : collector.efficiency >= 70 ? 'text-amber-500' : 'text-red-500';
   const effBarColor = collector.efficiency >= 90 ? '#22c55e' : collector.efficiency >= 70 ? '#f59e0b' : '#ef4444';
+  // Approved leave covering today, if any
+  const leaveNow = leave?.leaves.find((l) => leavePhase(l, leave.today) === 'current');
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
@@ -418,11 +430,16 @@ export default function CollectorProfile() {
           <div className="bg-white rounded-xl border border-card-border p-6">
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Quick Info</h2>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <span className="text-sm text-gray-500">Status</span>
-                <Badge variant={collector.status === 'active' ? 'success' : 'warning'}>
-                  {collector.status === 'active' ? 'On Duty' : 'Off Duty'}
-                </Badge>
+                <div className="text-right">
+                  <Badge variant={collector.status === 'active' ? 'success' : 'warning'}>
+                    {collector.status === 'active' ? 'On Duty' : 'Off Duty'}
+                  </Badge>
+                  {leaveNow && (
+                    <p className="text-xs text-amber-700 mt-1">On leave until {formatDay(leaveNow.endDate, leave.today)}</p>
+                  )}
+                </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-500">Zone</span>
@@ -439,6 +456,34 @@ export default function CollectorProfile() {
                 </span>
               </div>
             </div>
+          </div>
+
+          {/* Leave — collectors request it from their app; reviewed on the Leave page */}
+          <div className="bg-white rounded-xl border border-card-border p-6">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Leave</h2>
+              <Link to="/leave" className="text-xs font-medium text-accent hover:underline">All leave requests</Link>
+            </div>
+            {!leave ? (
+              <p className="text-sm text-gray-400 text-center py-4">Could not load leave requests</p>
+            ) : leave.leaves.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-4">No leave requests</p>
+            ) : (
+              <div className="space-y-3">
+                {leave.leaves.slice(0, 5).map((l) => {
+                  const pill = leavePill(l);
+                  return (
+                    <div key={l._id} className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{formatRange(l.startDate, l.endDate, leave.today)}</p>
+                        <p className="text-xs text-gray-400">{pluralDays(leaveLength(l))}</p>
+                      </div>
+                      <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-xs font-medium ${pill.color}`}>{pill.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Recent Activity */}

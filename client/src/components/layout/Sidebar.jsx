@@ -12,6 +12,7 @@ import {
   X,
   Megaphone,
   UserPlus,
+  CalendarOff,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,6 +21,7 @@ const navItems = [
   { to: '/map', icon: Map, label: 'Map' },
   { to: '/bins', icon: Trash2, label: 'Bins' },
   { to: '/collectors', icon: Users, label: 'Collectors' },
+  { to: '/leave', icon: CalendarOff, label: 'Leave' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
   { to: '/community-reports', icon: Megaphone, label: 'Community' },
   { to: '/applications', icon: UserPlus, label: 'Applications' },
