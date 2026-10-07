@@ -54,6 +54,11 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {
+  // Every sign-in would fail without it, so stop here with a clear message instead
+  if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET is not set. Copy server/.env.example to server/.env and fill it in.');
+    process.exit(1);
+  }
   await connectDB();
   startLeaveScheduler();
   app.listen(PORT, '0.0.0.0', () => {
