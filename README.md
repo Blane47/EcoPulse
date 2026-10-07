@@ -1,5 +1,7 @@
 # EcoPulse
 
+[![CI](https://github.com/Blane47/EcoPulse/actions/workflows/ci.yml/badge.svg)](https://github.com/Blane47/EcoPulse/actions/workflows/ci.yml)
+
 **Smart waste management for Buea, Cameroon.** Residents report overflowing bins from their phones, municipal staff see every report on a live dashboard and dispatch the nearest collector, and the collector is notified in their own app, navigates to the spot and marks it cleared. The resident sees the status change from *Pending* to *Collector Assigned* to *Collected*.
 
 EcoPulse is my B.Tech final-year project at the University of Buea. It is a full-stack system: one Node.js API and three clients, built around how waste collection actually works in Buea's four zones (Molyko, Great Soppo, Bonduma and Buea Town).
@@ -125,15 +127,25 @@ node scripts/migrate.js --apply   # writes it
 
 Collectors used to sign in with phone + PIN. The migration removes the old PINs and lists collectors who have no email yet: open each one in the dashboard, add their email, then use **Reset password** to give them a temporary password.
 
+## Testing
+
+```bash
+cd server
+npm test
+```
+
+This seeds a throwaway database (`ecopulse_test` on local MongoDB by default; set `TEST_MONGODB_URI` to use another), starts the API on port 5055 and runs the suites in `server/tests/`: about 145 checks covering sign-in and passwords, chat isolation, report assignment, proof photos and their review, collector applications and leave requests, including the job that moves collectors on and off leave. It refuses to run against a database whose name doesn't end in `_test`, because the seed wipes it. `npm test -- leave` runs one suite.
+
+GitHub Actions runs these on every push, along with the dashboard's lint and build and a check that the two mobile apps don't use any undefined names (`eslint.mobile.config.mjs`).
+
 ## Project status
 
-Working end to end: reporting, assignment, collector notifications, chat, schedules, collector applications, and the responsive dashboard.
+Working end to end: reporting, assignment, collector notifications, proof-of-collection photos reviewed by an admin, chat, schedules, collector applications with email sign-in, leave requests, and the responsive dashboard.
 
 Known limitations and next steps:
 - Collector notifications arrive while the app is open (polled every 30 s). Push notifications when the app is closed need a development build and Firebase, and are the next step.
 - Resident identity is tied to the device rather than verified by SMS. An SMS one-time code would be stronger but needs a paid SMS provider.
 - The **Reports & Analytics** page, the map's zone overview panel and the dashboard's trend percentages currently show sample data from `client/src/data/mockData.js`; the other dashboard figures are live.
-- The dashboard's search box is not wired up yet.
 
 ## Documentation
 
