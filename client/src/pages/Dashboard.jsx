@@ -6,14 +6,12 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import StatCard from '../components/ui/StatCard';
 import Badge from '../components/ui/Badge';
 import { getDashboardStats, getRecentActivity } from '../api/activity';
-import { getBins } from '../api/bins';
 import { collectionsPerZone as fallbackZoneData, zones } from '../data/mockData';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState({ totalBins: 0, collectionsToday: 0, overdueBins: 0, activeCollectors: 0 });
   const [activity, setActivity] = useState([]);
-  const [bins, setBins] = useState([]);
   const [zoneData, setZoneData] = useState(fallbackZoneData);
   const [loading, setLoading] = useState(true);
   const [showAll, setShowAll] = useState(false);
@@ -24,20 +22,20 @@ export default function Dashboard() {
     try {
       const data = await getRecentActivity(50);
       setAllActivity(data);
-    } catch {}
+    } catch {
+      // Leave the short list showing
+    }
   };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [dashStats, recentAct, binsRes] = await Promise.all([
+        const [dashStats, recentAct] = await Promise.all([
           getDashboardStats(),
           getRecentActivity(5),
-          getBins({ limit: 50 }),
         ]);
         setStats(dashStats);
         setActivity(recentAct);
-        setBins(binsRes.bins || []);
         if (dashStats.collectionsByZone?.length) {
           setZoneData(dashStats.collectionsByZone.map((z) => ({ zone: z._id, collections: z.collections })));
         }

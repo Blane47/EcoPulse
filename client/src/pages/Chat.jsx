@@ -55,7 +55,9 @@ export default function Chat() {
     try {
       const { data } = await api.get('/chat');
       setChats(data);
-    } catch {}
+    } catch {
+      // Keep the list we have; the next poll tries again
+    }
   }, []);
 
   // Fetch messages for selected chat
@@ -65,7 +67,9 @@ export default function Chat() {
       const { data } = await api.get(`/chat/${selectedChat}`);
       setMessages(data);
       await api.put(`/chat/${selectedChat}/read`).catch(() => {});
-    } catch {}
+    } catch {
+      // Keep the messages we have; the next poll tries again
+    }
   }, [selectedChat]);
 
   useEffect(() => {

@@ -28,28 +28,17 @@ export default function CollectorProfile() {
   const [savingEmail, setSavingEmail] = useState(false);
   const [emailError, setEmailError] = useState('');
 
-  const fetchData = async () => {
-    try {
-      const data = await getCollectorById(id);
-      setCollector(data);
-    } catch {}
-
-    try {
-      const { data } = await api.get('/activity', { params: { collectorId: id, limit: 20 } });
-      setActivity(Array.isArray(data) ? data : data.activities || []);
-    } catch {
-      setActivity([]);
-    }
-
-    try {
-      const { data } = await api.get('/leave', { params: { collector: id } });
-      setLeave(data);
-    } catch {
-      setLeave(null);
-    }
-
-    setLoading(false);
-  };
+  // The profile, its activity and its leave load side by side; a failed side shows as empty
+  const fetchData = () =>
+    Promise.all([
+      getCollectorById(id).then(setCollector).catch(() => setCollector(null)),
+      api.get('/activity', { params: { collectorId: id, limit: 20 } })
+        .then(({ data }) => setActivity(Array.isArray(data) ? data : data.activities || []))
+        .catch(() => setActivity([])),
+      api.get('/leave', { params: { collector: id } })
+        .then(({ data }) => setLeave(data))
+        .catch(() => setLeave(null)),
+    ]).finally(() => setLoading(false));
 
   useEffect(() => {
     fetchData();
@@ -97,7 +86,9 @@ export default function CollectorProfile() {
     try {
       await updateCollector(id, { status: newStatus });
       setCollector((prev) => ({ ...prev, status: newStatus }));
-    } catch {}
+    } catch (err) {
+      window.alert(err.response?.data?.message || 'Could not change the status. Try again.');
+    }
     setUpdatingStatus(false);
     setShowStatusMenu(false);
   };

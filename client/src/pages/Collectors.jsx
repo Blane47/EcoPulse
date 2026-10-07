@@ -59,6 +59,11 @@ export default function Collectors() {
         </span>
       </div>
 
+      {loading && <div className="text-center py-20 text-gray-400">Loading collectors...</div>}
+      {!loading && collectorsData.length === 0 && (
+        <div className="text-center py-20 text-gray-500">No collectors yet. Add one, or approve an application.</div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {collectorsData.map((collector) => (
           <div key={collector._id} className="bg-white rounded-card border border-card-border p-5 hover:shadow-md transition-shadow">

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { getStoredUser, isAuthenticated as checkAuth } from '../api/auth';
 
 const AuthContext = createContext(null);
@@ -6,11 +6,6 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(getStoredUser());
   const [authenticated, setAuthenticated] = useState(checkAuth());
-
-  useEffect(() => {
-    setUser(getStoredUser());
-    setAuthenticated(checkAuth());
-  }, []);
 
   const onLogin = (userData) => {
     setUser(userData);
@@ -31,4 +26,6 @@ export function AuthProvider({ children }) {
   );
 }
 
+// The hook lives beside its provider; fast refresh reloads this file in full, which is fine for auth
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

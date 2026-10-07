@@ -16,12 +16,14 @@ export default function AnnouncementModal({ isOpen, onClose }) {
   const [type, setType] = useState('info');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState('');
 
   if (!isOpen) return null;
 
   const handleSend = async () => {
     if (!title.trim() || !message.trim()) return;
     setSending(true);
+    setError('');
     try {
       await api.post('/announcements', { title: title.trim(), message: message.trim(), zone, type });
       setSent(true);
@@ -33,7 +35,9 @@ export default function AnnouncementModal({ isOpen, onClose }) {
         setType('info');
         onClose();
       }, 1500);
-    } catch {}
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not send the announcement. Try again.');
+    }
     setSending(false);
   };
 
@@ -121,6 +125,8 @@ export default function AnnouncementModal({ isOpen, onClose }) {
                 className="w-full px-4 py-2.5 border border-card-border rounded-xl text-sm text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
               />
             </div>
+
+            {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
 
             {/* Send Button */}
             <button

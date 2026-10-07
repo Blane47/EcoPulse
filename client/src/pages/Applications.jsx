@@ -24,16 +24,14 @@ export default function Applications() {
   // Sign-in emails typed in for older applications that were submitted without one, by application id
   const [emails, setEmails] = useState({});
 
-  const fetchApplications = async () => {
-    try {
-      const { data } = await api.get('/applications');
-      setApplications(data);
-      setLoadError(false);
-    } catch {
-      setLoadError(true);
-    }
-    setLoading(false);
-  };
+  const fetchApplications = () =>
+    api.get('/applications')
+      .then(({ data }) => {
+        setApplications(data);
+        setLoadError(false);
+      })
+      .catch(() => setLoadError(true))
+      .finally(() => setLoading(false));
 
   useEffect(() => {
     fetchApplications();
