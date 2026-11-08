@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and adjust. terraform.tfvars is gitignored.
+
+aws_region  = "eu-west-1"
+project     = "ecopulse"
+environment = "prod"
+
+# Tag of the API image you pushed to ECR.
+api_image_tag = "latest"
+
+# API instance size — smallest by default to keep costs low.
+# api_cpu    = "256"
+# api_memory = "512"

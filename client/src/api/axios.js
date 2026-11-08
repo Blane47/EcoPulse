@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+// Set VITE_API_URL at build time to the deployed API (e.g. https://xxxx.eu-west-1.awsapprunner.com/api).
+// Falls back to the local dev server.
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
