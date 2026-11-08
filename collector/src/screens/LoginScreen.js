@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Image,
-  ScrollView, KeyboardAvoidingView, Platform, Dimensions,
+  ScrollView, KeyboardAvoidingView, Platform, Dimensions, Linking, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -13,6 +13,13 @@ import { playSuccess } from '../utils/sounds';
 // Tighter header on short phones so the whole form fits without scrolling
 const COMPACT = Dimensions.get('window').height < 720;
 const looksLikeEmail = (text) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(text.trim());
+
+// Support line for sign-in problems; replace with the municipality's real number.
+const SUPPORT_PHONE = '+237600000000';
+const SUPPORT_MESSAGE = {
+  en: 'Hello, I am having trouble signing in to the EcoPulse Collector app.',
+  fr: 'Bonjour, je n’arrive pas à me connecter à l’application EcoPulse Collecteur.',
+};
 
 export default function LoginScreen() {
   const { login, language, selectLanguage } = useAuth();
@@ -52,6 +59,28 @@ export default function LoginScreen() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Report a sign-in problem to the municipality's support line, by WhatsApp or a call
+  const contactSupport = () => {
+    const digits = SUPPORT_PHONE.replace(/[^\d]/g, '');
+    const text = encodeURIComponent(en ? SUPPORT_MESSAGE.en : SUPPORT_MESSAGE.fr);
+    const open = (url) => Linking.openURL(url).catch(() => {
+      setError(en
+        ? `Could not open the app. Call support at ${SUPPORT_PHONE}.`
+        : `Impossible d’ouvrir l’application. Appelez le support au ${SUPPORT_PHONE}.`);
+    });
+    Alert.alert(
+      en ? 'Contact support' : 'Contacter le support',
+      en
+        ? `Report a sign-in problem to ${SUPPORT_PHONE}.`
+        : `Signalez un problème de connexion au ${SUPPORT_PHONE}.`,
+      [
+        { text: 'WhatsApp', onPress: () => open(`https://wa.me/${digits}?text=${text}`) },
+        { text: en ? 'Call' : 'Appeler', onPress: () => open(`tel:${SUPPORT_PHONE}`) },
+        { text: en ? 'Cancel' : 'Annuler', style: 'cancel' },
+      ],
+    );
   };
 
   return (
@@ -158,6 +187,13 @@ export default function LoginScreen() {
               ? 'Forgot your password? Ask your supervisor for a new temporary one.'
               : 'Mot de passe oublié ? Demandez à votre superviseur un nouveau mot de passe temporaire.'}
           </Text>
+          <TouchableOpacity onPress={contactSupport} style={styles.supportBtn} activeOpacity={0.7} accessibilityRole="button">
+            <Text style={styles.supportText}>
+              {en ? 'Having trouble signing in? ' : 'Problème de connexion ? '}
+              <Text style={styles.supportLink}>{en ? 'Contact support' : 'Contacter le support'}</Text>
+            </Text>
+          </TouchableOpacity>
+
           <Text style={styles.footer}>{en ? 'EcoPulse · Buea Municipality' : 'EcoPulse · Commune de Buea'}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -291,5 +327,8 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     lineHeight: 19,
   },
-  footer: { marginTop: 8, textAlign: 'center', fontSize: 11, color: colors.textMuted },
+  supportBtn: { marginTop: 14, alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12 },
+  supportText: { fontSize: 13, textAlign: 'center', color: colors.textSecondary },
+  supportLink: { color: colors.accentDark, fontWeight: '700' },
+  footer: { marginTop: 10, textAlign: 'center', fontSize: 11, color: colors.textMuted },
 });
