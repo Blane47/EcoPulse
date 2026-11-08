@@ -6,3 +6,9 @@ dist/
 .DS_Store
 Thumbs.db
 .claude/
+
+# Office temporary lock files
+~$*
+
+# Local tooling artifacts
+.artifacts/
