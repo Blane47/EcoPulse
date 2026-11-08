@@ -1,0 +1,21 @@
+Suggested captions for the "additional photos" upload (write them in your own words if you prefer).
+The files are numbered in the order they appear in the article.
+
+01-admin-dashboard.png
+   The EcoPulse admin dashboard: live view of bins, collections, overdue bins and active
+   collectors across Buea, with collection trends and a zone-by-zone breakdown.
+
+02-assign-report-to-collector.png
+   A resident's report ("Bin overflowing since morning," near UB Main Gate, Molyko) being
+   assigned to a collector who works in that same zone.
+
+03-collector-app-signin.png
+   The Collector App sign-in screen - bilingual English/French, with a Contact support option.
+
+04-collector-daily-route.png
+   A collector's home screen: today's route, progress, and priority bins ranked by urgency
+   (BIN-001 flagged critical at 92% full).
+
+05-resident-app-home.png
+   The Resident App home: auto-detected zone, the next collection window with a countdown,
+   and "Report a Bin" one tap away.
