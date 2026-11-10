@@ -6,7 +6,7 @@ import {
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
 import api from '../api/axios';
-import { ArrowLeftIcon } from '../components/Icons';
+import { ArrowLeftIcon, ShieldCheckIcon, SendIcon } from '../components/Icons';
 import { ChatIcon } from '../components/TabIcons';
 import { playSend, playReceive } from '../utils/sounds';
 
@@ -124,7 +124,7 @@ export default function ChatScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
         <View style={[styles.headerAvatar, { backgroundColor: colors.accentLight }]}>
-          <Text style={{ fontSize: 18 }}>🛡️</Text>
+          <ShieldCheckIcon size={20} color={colors.accent} />
         </View>
         <View>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{en ? 'Admin Support' : 'Support Admin'}</Text>
@@ -192,7 +192,7 @@ export default function ChatScreen() {
           {sending ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.sendBtnText}>↑</Text>
+            <SendIcon size={18} color="#fff" />
           )}
         </TouchableOpacity>
       </View>

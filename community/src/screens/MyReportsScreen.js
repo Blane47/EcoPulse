@@ -173,8 +173,8 @@ export default function MyReportsScreen({ navigation, route }) {
                   <CollectionIcon size={40} color="#fff" />
                   <Text style={styles.impactText}>
                     {en
-                      ? `Your reports got ${collectedCount} ${collectedCount === 1 ? 'spot' : 'spots'} cleaned 🏆`
-                      : `Vos signalements ont permis de nettoyer ${collectedCount} ${collectedCount === 1 ? 'endroit' : 'endroits'} 🏆`}
+                      ? `Your reports got ${collectedCount} ${collectedCount === 1 ? 'spot' : 'spots'} cleaned`
+                      : `Vos signalements ont permis de nettoyer ${collectedCount} ${collectedCount === 1 ? 'endroit' : 'endroits'}`}
                   </Text>
                 </View>
               </View>

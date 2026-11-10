@@ -205,7 +205,7 @@ export default function HomeScreen({ navigation }) {
         {/* Greeting */}
         {profile?.name && (
           <Text style={styles.greeting}>
-            {en ? `Hey ${profile.name} 👋` : `Salut ${profile.name} 👋`}
+            {en ? `Hey ${profile.name}` : `Salut ${profile.name}`}
           </Text>
         )}
 

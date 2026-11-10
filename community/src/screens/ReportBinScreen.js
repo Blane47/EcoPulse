@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
 import api from '../api/axios';
-import { MapPinIcon, CameraIcon, ArrowLeftIcon, CheckIcon } from '../components/Icons';
+import { MapPinIcon, CameraIcon, ArrowLeftIcon, CheckIcon, SendIcon, XMarkIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
 import { shrinkPhoto } from '../utils/shrinkPhoto';
 import { playSuccess } from '../utils/sounds';
@@ -143,7 +143,7 @@ export default function ReportBinScreen({ navigation }) {
             )}
           </View>
         </View>
-        {coords && <Text style={[styles.locationCheck, { color: colors.accent }]}>✓</Text>}
+        {coords && <CheckIcon size={18} color={colors.accent} strokeWidth={2.5} />}
       </View>
 
       {/* Photo Section */}
@@ -156,7 +156,7 @@ export default function ReportBinScreen({ navigation }) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><CameraIcon size={16} color={colors.accent} /><Text style={[styles.retakeBtnText, { color: colors.accent }]}>{en ? 'Retake' : 'Reprendre'}</Text></View>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.retakeBtn, { borderColor: colors.critical }]} onPress={() => setPhoto(null)}>
-              <Text style={[styles.retakeBtnText, { color: colors.critical }]}>✕ {en ? 'Remove' : 'Supprimer'}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><XMarkIcon size={16} color={colors.critical} /><Text style={[styles.retakeBtnText, { color: colors.critical }]}>{en ? 'Remove' : 'Supprimer'}</Text></View>
             </TouchableOpacity>
           </View>
         </View>
@@ -199,9 +199,10 @@ export default function ReportBinScreen({ navigation }) {
         {submitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.submitBtnText}>
-            {en ? '📤 Submit Report' : '📤 Envoyer le Signalement'}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <SendIcon size={18} color="#fff" />
+            <Text style={styles.submitBtnText}>{en ? 'Submit Report' : 'Envoyer le Signalement'}</Text>
+          </View>
         )}
       </TouchableOpacity>
 

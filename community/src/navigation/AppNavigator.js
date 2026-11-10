@@ -7,7 +7,7 @@ import { useZone } from '../context/ZoneContext';
 import api from '../api/axios';
 import { colors } from '../theme';
 import { HomeIcon, CalendarIcon, CollectionIcon, ChatIcon, ReportIcon, SettingsIcon } from '../components/TabIcons';
-import { MapPinIcon, LogoutIcon } from '../components/Icons';
+import { MapPinIcon, LogoutIcon, GlobeIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
 
 import OnboardingScreen from '../screens/OnboardingScreen';
@@ -119,9 +119,10 @@ function SettingsPlaceholder({ navigation }) {
           borderColor: colors.cardBorder, overflow: 'hidden',
         }}>
           <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: colors.cardBorder, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>
-              🌐 {en ? 'Language' : 'Langue'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <GlobeIcon size={16} color={colors.text} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.text }}>{en ? 'Language' : 'Langue'}</Text>
+            </View>
             <Text
               style={{ fontSize: 14, fontWeight: '600', color: colors.accent }}
               onPress={() => selectLanguage(en ? 'fr' : 'en')}

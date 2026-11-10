@@ -6,6 +6,7 @@ import {
 import { useZone } from '../context/ZoneContext';
 import { colors, shadows } from '../theme';
 import TealHeader from '../components/TealHeader';
+import { StarIcon } from '../components/Icons';
 import {
   getAvailableOperators, createPickup, getMyPickups, cancelPickup, estimateFee,
 } from '../api/operators';
@@ -165,10 +166,13 @@ export default function OperatorsScreen() {
             <View style={styles.cardTop}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.bizName}>{op.businessName}</Text>
-                <Text style={styles.sub}>
-                  {op.reviewCount ? `★ ${op.rating?.toFixed(1)} (${op.reviewCount})` : (en ? 'New operator' : 'Nouvel opérateur')}
-                  {'  ·  '}{op.pickupsCompleted || 0} {en ? 'pickups' : 'ramassages'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  {op.reviewCount ? <StarIcon size={12} color={colors.warning} /> : null}
+                  <Text style={styles.sub}>
+                    {op.reviewCount ? `${op.rating?.toFixed(1)} (${op.reviewCount})` : (en ? 'New operator' : 'Nouvel opérateur')}
+                    {'  ·  '}{op.pickupsCompleted || 0} {en ? 'pickups' : 'ramassages'}
+                  </Text>
+                </View>
               </View>
               <View style={styles.feePill}>
                 <Text style={styles.feePillText}>{en ? 'from' : 'dès'} {fcfa(op.baseFee)}</Text>

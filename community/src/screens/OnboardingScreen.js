@@ -4,12 +4,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useZone } from '../context/ZoneContext';
 import { colors } from '../theme';
 import { normalizePhone } from '../utils/phone';
+import {
+  AcademicCapIcon, ShoppingBagIcon, HomeIcon, MapPinIcon,
+  GlobeIcon, UserIcon, LockIcon, CheckIcon, ArrowLeftIcon,
+} from '../components/Icons';
 
 const zones = [
-  { name: 'Molyko', icon: '🎓', en: 'University area', fr: 'Zone universitaire' },
-  { name: 'Great Soppo', icon: '🛍️', en: 'Commercial district', fr: 'Zone commerciale' },
-  { name: 'Bonduma', icon: '🏠', en: 'Residential area', fr: 'Zone résidentielle' },
-  { name: 'Buea Town', icon: '📍', en: 'Town center', fr: 'Centre-ville' },
+  { name: 'Molyko', Icon: AcademicCapIcon, en: 'University area', fr: 'Zone universitaire' },
+  { name: 'Great Soppo', Icon: ShoppingBagIcon, en: 'Commercial district', fr: 'Zone commerciale' },
+  { name: 'Bonduma', Icon: HomeIcon, en: 'Residential area', fr: 'Zone résidentielle' },
+  { name: 'Buea Town', Icon: MapPinIcon, en: 'Town center', fr: 'Centre-ville' },
 ];
 
 export default function OnboardingScreen() {
@@ -80,8 +84,8 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       {/* Hero Banner */}
       <View style={styles.heroBanner}>
-        <LinearGradient colors={['rgba(34,197,94,0.3)', 'rgba(15,22,35,0.6)']} style={StyleSheet.absoluteFill} />
-        <Text style={styles.heroEmoji}>{step === 1 ? '🌍' : '👤'}</Text>
+        <LinearGradient colors={['rgba(37,99,235,0.3)', 'rgba(15,22,35,0.6)']} style={StyleSheet.absoluteFill} />
+        <View style={styles.heroEmoji}>{step === 1 ? <GlobeIcon size={48} color="#fff" /> : <UserIcon size={48} color="#fff" />}</View>
         <Text style={styles.heroTitle}>
           {step === 1
             ? 'Keep Buea Clean / Gardons\nBuea Propre'
@@ -99,10 +103,11 @@ export default function OnboardingScreen() {
           <ScrollView style={styles.content} contentContainerStyle={styles.contentContainer}>
             {/* Language Toggle */}
             <TouchableOpacity
-              style={styles.langToggle}
+              style={[styles.langToggle, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
               onPress={() => selectLanguage(en ? 'fr' : 'en')}
             >
-              <Text style={styles.langToggleText}>🌐 {en ? 'FR' : 'EN'}</Text>
+              <GlobeIcon size={14} color={colors.accent} />
+              <Text style={styles.langToggleText}>{en ? 'FR' : 'EN'}</Text>
             </TouchableOpacity>
 
             {/* Select Zone */}
@@ -119,7 +124,7 @@ export default function OnboardingScreen() {
                 activeOpacity={0.7}
               >
                 <View style={styles.zoneIconContainer}>
-                  <Text style={styles.zoneIcon}>{z.icon}</Text>
+                  <z.Icon size={24} color={colors.accent} />
                 </View>
                 <View style={styles.zoneInfo}>
                   <Text style={styles.zoneName}>{z.name}</Text>
@@ -127,7 +132,7 @@ export default function OnboardingScreen() {
                 </View>
                 {selected === z.name && (
                   <View style={styles.checkCircle}>
-                    <Text style={styles.checkMark}>✓</Text>
+                    <CheckIcon size={16} color="#fff" strokeWidth={2.5} />
                   </View>
                 )}
               </TouchableOpacity>
@@ -142,7 +147,7 @@ export default function OnboardingScreen() {
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={selected ? ['#22c55e', '#15803d'] : ['#d1d5db', '#9ca3af']}
+                colors={selected ? ['#2563eb', '#1d4ed8'] : ['#d1d5db', '#9ca3af']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.continueButton}
@@ -185,7 +190,7 @@ export default function OnboardingScreen() {
             />
 
             <View style={styles.infoCard}>
-              <Text style={{ fontSize: 16 }}>🔒</Text>
+              <LockIcon size={16} color={colors.textSecondary} />
               <Text style={styles.infoText}>
                 {en
                   ? 'Your phone number is your unique ID. If you switch devices, just enter the same number to get your history back.'
@@ -196,8 +201,9 @@ export default function OnboardingScreen() {
 
           <View style={styles.footer}>
             <View style={styles.footerButtons}>
-              <TouchableOpacity style={styles.backBtn} onPress={() => setStep(1)}>
-                <Text style={styles.backBtnText}>← {en ? 'Back' : 'Retour'}</Text>
+              <TouchableOpacity style={[styles.backBtn, { flexDirection: 'row', alignItems: 'center', gap: 6 }]} onPress={() => setStep(1)}>
+                <ArrowLeftIcon size={16} color={colors.textSecondary} />
+                <Text style={styles.backBtnText}>{en ? 'Back' : 'Retour'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{ flex: 1 }}
@@ -206,7 +212,7 @@ export default function OnboardingScreen() {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#22c55e', '#15803d']}
+                  colors={['#2563eb', '#1d4ed8']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.continueButton}
@@ -288,7 +294,7 @@ const styles = StyleSheet.create({
   },
   zoneCardSelected: {
     borderColor: colors.accent,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#eff6ff',
   },
   zoneIconContainer: {
     width: 44,
@@ -359,10 +365,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: 12,
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#eff6ff',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#bbf7d0',
+    borderColor: '#bfdbfe',
     padding: 14,
     marginTop: 8,
   },
