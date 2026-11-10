@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, TrendingUp, AlertTriangle, Users, Megaphone, Map, ClipboardList, MessageSquare, ArrowUpRight } from 'lucide-react';
+import { Trash2, TrendingUp, AlertTriangle, Users, Megaphone, Map, ClipboardList, MessageSquare, ArrowUpRight, Truck } from 'lucide-react';
 import AnnouncementModal from '../components/ui/AnnouncementModal';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import StatCard from '../components/ui/StatCard';
 import Badge from '../components/ui/Badge';
 import { getDashboardStats, getRecentActivity } from '../api/activity';
+import { getOperators } from '../api/operators';
 import { collectionsPerZone as fallbackZoneData, zones } from '../data/mockData';
 
 export default function Dashboard() {
@@ -17,6 +18,17 @@ export default function Dashboard() {
   const [showAll, setShowAll] = useState(false);
   const [allActivity, setAllActivity] = useState([]);
   const [showAnnouncement, setShowAnnouncement] = useState(false);
+  const [operatorCounts, setOperatorCounts] = useState({ pending: 0, approved: 0, total: 0 });
+
+  useEffect(() => {
+    getOperators()
+      .then((ops) => setOperatorCounts({
+        total: ops.length,
+        pending: ops.filter((o) => o.status === 'pending').length,
+        approved: ops.filter((o) => o.status === 'approved').length,
+      }))
+      .catch(() => {});
+  }, []);
 
   const fetchAllActivity = async () => {
     try {
@@ -84,6 +96,32 @@ export default function Dashboard() {
         <StatCard icon={<AlertTriangle size={20} />} label="Overdue Bins" value={stats.overdueBins} color="red" />
         <StatCard icon={<Users size={20} />} label="Active Collectors" value={stats.activeCollectors} trend="+15.3%" trendUp color="green" />
       </div>
+
+      {/* Private Operators summary */}
+      <button
+        onClick={() => navigate('/operators')}
+        className="w-full flex items-center justify-between bg-white rounded-2xl border border-card-border p-5 shadow-card mb-8 hover:shadow-md transition-shadow text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+            <Truck size={22} />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Private Operators</h2>
+            <p className="text-xs text-gray-400">
+              {operatorCounts.approved} approved · {operatorCounts.total} total on the platform
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {operatorCounts.pending > 0 && (
+            <span className="flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+              {operatorCounts.pending} pending review
+            </span>
+          )}
+          <ArrowUpRight size={18} className="text-gray-400" />
+        </div>
+      </button>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-8">
