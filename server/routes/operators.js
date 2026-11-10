@@ -10,6 +10,8 @@ const {
   rejectOperator,
   suspendOperator,
   updateOperator,
+  getMe,
+  getMyCollectors,
 } = require('../controllers/operatorController');
 const { requireSuperAdmin } = require('../middleware/auth');
 const { operatorAuth } = require('../middleware/operatorAuth');
@@ -17,6 +19,10 @@ const { operatorAuth } = require('../middleware/operatorAuth');
 // Public: self-registration + operator-admin login
 router.post('/register', registerOperator);
 router.post('/login', loginOperator);
+
+// Operator-admin self endpoints (keep above /:id so they aren't shadowed)
+router.get('/me', operatorAuth, getMe);
+router.get('/me/collectors', operatorAuth, getMyCollectors);
 
 // Public: operators a resident may browse/request
 router.get('/available', getAvailableOperators);

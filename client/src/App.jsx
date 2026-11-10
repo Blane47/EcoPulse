@@ -12,6 +12,7 @@ const Bins = lazy(() => import('./pages/Bins'));
 const MapView = lazy(() => import('./pages/MapView'));
 const Collectors = lazy(() => import('./pages/Collectors'));
 const Operators = lazy(() => import('./pages/Operators'));
+const OperatorApp = lazy(() => import('./pages/operator/OperatorApp'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Chat = lazy(() => import('./pages/Chat'));
@@ -32,6 +33,8 @@ function AppRoutes() {
   return (
     <>
       <Routes>
+        {/* Private operator portal — its own auth, separate from the admin area */}
+        <Route path="/operator/*" element={<OperatorApp />} />
         <Route path="/login" element={authenticated ? <Navigate to="/" /> : <Login />} />
         <Route
           element={

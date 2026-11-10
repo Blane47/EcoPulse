@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Operator = require('../models/Operator');
+const Collector = require('../models/Collector');
 const { normalizeEmail, isValidEmail } = require('../utils/email');
 const { normalizePhone } = require('../utils/phone');
 
@@ -113,6 +114,21 @@ exports.getOperatorById = async (req, res, next) => {
     const operator = await Operator.findById(req.params.id).select(PUBLIC_FIELDS);
     if (!operator) return res.status(404).json({ message: 'Operator not found' });
     res.json(operator);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /me — the signed-in operator's own full profile (operatorAuth loaded it).
+exports.getMe = async (req, res) => {
+  res.json(req.operator);
+};
+
+// GET /me/collectors — the operator's own workers, to assign to pickup jobs.
+exports.getMyCollectors = async (req, res, next) => {
+  try {
+    const collectors = await Collector.find({ operatorId: req.operator._id }).sort({ name: 1 });
+    res.json(collectors);
   } catch (error) {
     next(error);
   }
