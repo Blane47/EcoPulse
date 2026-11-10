@@ -65,6 +65,13 @@ export default function OperatorDashboard() {
     finally { setBusyId(null); }
   };
 
+  const doDecline = async (job) => {
+    setBusyId(job._id);
+    try { await advanceJob(job._id, 'declined'); await load(); }
+    catch (err) { setError(err.response?.data?.message || 'Could not decline the job.'); }
+    finally { setBusyId(null); }
+  };
+
   const doAdvance = async (job) => {
     const next = ADVANCE[job.status];
     if (!next) return;
@@ -196,6 +203,13 @@ export default function OperatorDashboard() {
                         className="w-full py-2 bg-accent text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"
                       >
                         Accept & Assign
+                      </button>
+                      <button
+                        disabled={busyId === job._id}
+                        onClick={() => doDecline(job)}
+                        className="w-full py-1.5 text-sm text-gray-500 hover:text-red-600 transition-colors disabled:opacity-50"
+                      >
+                        Decline
                       </button>
                     </div>
                   </JobCard>
