@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, gradients, shadows } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { navigateToBin, verifiedCollect } from '../utils/collectBin';
-import { MapPinIcon } from '../components/Icons';
+import { MapPinIcon, CheckIcon } from '../components/Icons';
 import api from '../api/axios';
 import { playSuccess } from '../utils/sounds';
 import TealHeader from '../components/TealHeader';
@@ -159,8 +159,9 @@ export default function RouteScreen({ navigation }) {
                         <Text style={styles.binIdDone}>{item.binId}</Text>
                         <Text style={styles.binLocationDone}>{item.location}</Text>
                       </View>
-                      <View style={styles.collectedBadge}>
-                        <Text style={styles.collectedBadgeText}>{en ? '✓ Collected' : '✓ Collecté'}</Text>
+                      <View style={[styles.collectedBadge, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                        <CheckIcon size={13} color={colors.accent} strokeWidth={2.5} />
+                        <Text style={styles.collectedBadgeText}>{en ? 'Collected' : 'Collecté'}</Text>
                       </View>
                     </View>
                   </View>
@@ -207,7 +208,10 @@ export default function RouteScreen({ navigation }) {
                         {isCollecting ? (
                           <ActivityIndicator color="#fff" size="small" />
                         ) : (
-                          <Text style={styles.collectButtonText}>{en ? '✓ Collect' : '✓ Collecter'}</Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                            <CheckIcon size={16} color="#fff" strokeWidth={2.5} />
+                            <Text style={styles.collectButtonText}>{en ? 'Collect' : 'Collecter'}</Text>
+                          </View>
                         )}
                       </LinearGradient>
                     </TouchableOpacity>

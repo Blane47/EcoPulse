@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, Image, StyleSheet, K
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { colors, gradients, shadows } from '../theme';
-import { ArrowLeftIcon } from '../components/Icons';
+import { ArrowLeftIcon, ChatBubbleIcon, SendIcon } from '../components/Icons';
 import api from '../api/axios';
 import { playSend, playReceive } from '../utils/sounds';
 
@@ -172,7 +172,7 @@ export default function ChatScreen({ navigation }) {
               </View>
             ) : (
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyIcon}>💬</Text>
+                <ChatBubbleIcon size={40} color={colors.textMuted} />
                 <Text style={styles.emptyTitle}>{en ? 'Start a conversation' : 'Démarrez une conversation'}</Text>
                 <Text style={styles.emptySubtitle}>{en ? 'Send a message to your supervisor' : 'Envoyez un message à votre superviseur'}</Text>
               </View>
@@ -203,7 +203,7 @@ export default function ChatScreen({ navigation }) {
               {sending ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.sendIcon}>➤</Text>
+                <SendIcon size={18} color="#fff" />
               )}
             </LinearGradient>
           </TouchableOpacity>

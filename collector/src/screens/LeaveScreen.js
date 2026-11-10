@@ -8,7 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { colors, gradients, shadows } from '../theme';
-import { CheckIcon, ClockIcon } from '../components/Icons';
+import { CheckIcon, ClockIcon, SunIcon } from '../components/Icons';
 import DateRangePicker from '../components/DateRangePicker';
 import api from '../api/axios';
 import {
@@ -240,7 +240,7 @@ export default function LeaveScreen() {
       <View style={[styles.statusCard, { backgroundColor: toneStyle.bg, borderColor: toneStyle.border }]}>
         <View style={[styles.statusIcon, { backgroundColor: toneStyle.iconBg }]}>
           {tone === 'next' ? <CheckIcon size={22} color={toneStyle.fg} strokeWidth={2.5} />
-            : tone === 'away' ? <Text style={{ fontSize: 20 }}>🏖️</Text>
+            : tone === 'away' ? <SunIcon size={22} color={toneStyle.fg} strokeWidth={2} />
               : <ClockIcon size={22} color={toneStyle.fg} strokeWidth={2} />}
         </View>
         <View style={{ flex: 1 }}>

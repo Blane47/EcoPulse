@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { colors, shadows } from '../theme';
 import TealHeader from '../components/TealHeader';
-import { MapPinIcon, ClockIcon } from '../components/Icons';
+import { MapPinIcon, ClockIcon, CheckIcon } from '../components/Icons';
 import { getAssignedPickups, advancePickup, setDuty } from '../api/pickups';
 
 // The action a collector takes next for each status, and the status it moves to.
@@ -185,8 +185,9 @@ export default function OnDemandScreen() {
                     <Text style={styles.resident}>{job.residentName || (en ? 'Resident' : 'Résident')}</Text>
                     <Text style={styles.meta}>{WASTE[job.wasteType]?.[en ? 'en' : 'fr'] || job.wasteType} · {fcfa(job.fee)}</Text>
                   </View>
-                  <View style={[styles.pill, { backgroundColor: colors.accentLight }]}>
-                    <Text style={[styles.pillText, { color: colors.accent }]}>{en ? '✓ Done' : '✓ Terminé'}</Text>
+                  <View style={[styles.pill, { backgroundColor: colors.accentLight, flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                    <CheckIcon size={12} color={colors.accent} strokeWidth={2.5} />
+                    <Text style={[styles.pillText, { color: colors.accent }]}>{en ? 'Done' : 'Terminé'}</Text>
                   </View>
                 </View>
               </View>

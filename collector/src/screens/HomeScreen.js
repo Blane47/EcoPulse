@@ -8,7 +8,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 import { colors, gradients, shadows } from '../theme';
 import { navigateToBin } from '../utils/collectBin';
-import { BellIcon, MapPinIcon, CheckIcon, ClockIcon } from '../components/Icons';
+import { BellIcon, MapPinIcon, CheckIcon, ClockIcon, SunIcon } from '../components/Icons';
 import { opensLeave } from '../utils/notificationTitle';
 import { currentLeave, addDays, formatDay } from '../utils/leave';
 import api from '../api/axios';
@@ -149,7 +149,7 @@ export default function HomeScreen({ navigation }) {
                   </View>
                 )}
                 <Text style={[styles.greetingText, { color: '#fff' }]}>
-                  {greeting()}, {user?.name?.split(' ')[0] || (en ? 'Collector' : 'Collecteur')} 👋
+                  {greeting()}, {user?.name?.split(' ')[0] || (en ? 'Collector' : 'Collecteur')}
                 </Text>
               </View>
             </LinearGradient>
@@ -162,7 +162,7 @@ export default function HomeScreen({ navigation }) {
                 activeOpacity={0.75}
                 accessibilityRole="button"
               >
-                <Text style={{ fontSize: 18 }}>🏖️</Text>
+                <SunIcon size={18} color="#92400e" />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.onLeaveTitle}>{en ? 'You are currently on leave' : 'Vous êtes actuellement en congé'}</Text>
                   <Text style={styles.onLeaveSub}>
