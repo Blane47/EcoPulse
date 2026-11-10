@@ -1,10 +1,10 @@
 export const colors = {
   primary: '#0f1623',
   primaryLight: '#1a2332',
-  accent: '#22c55e',
-  accentDark: '#16a34a',
-  accentLight: '#dcfce7',
-  accentMist: 'rgba(34,197,94,0.08)',
+  accent: '#2563eb',
+  accentDark: '#1d4ed8',
+  accentLight: '#dbeafe',
+  accentMist: 'rgba(37,99,235,0.08)',
   critical: '#ef4444',
   criticalLight: '#fee2e2',
   warning: '#f59e0b',
@@ -25,10 +25,11 @@ export const colors = {
 };
 
 export const gradients = {
-  greenButton: ['#22c55e', '#15803d'],
-  greenBanner: ['#16a34a', '#166534'],
-  greenSoft: ['#f0fdf4', '#dcfce7'],
-  greenMist: ['rgba(34,197,94,0.06)', 'rgba(34,197,94,0.02)'],
+  // Kept the green* names so every call site stays working; the brand is now Ocean Blue.
+  greenButton: ['#2563eb', '#1d4ed8'],
+  greenBanner: ['#1d4ed8', '#1e40af'],
+  greenSoft: ['#eff6ff', '#dbeafe'],
+  greenMist: ['rgba(37,99,235,0.06)', 'rgba(37,99,235,0.02)'],
   darkOverlay: ['rgba(15,22,35,0.85)', 'rgba(15,22,35,0.95)'],
   screenBg: ['#e8ecf4', '#edf1f7', '#f2f5fa'],
   screenBgWarm: ['#eaeff7', '#edf1f7', '#f5f7fc'],

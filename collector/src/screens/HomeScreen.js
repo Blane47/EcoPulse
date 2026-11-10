@@ -184,7 +184,7 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.glassOuter}>
                 {/* Background gradient layer */}
                 <LinearGradient
-                  colors={['rgba(22,163,74,0.85)', 'rgba(21,128,61,0.75)', 'rgba(22,101,52,0.85)']}
+                  colors={['rgba(37,99,235,0.85)', 'rgba(29,78,216,0.75)', 'rgba(30,64,175,0.85)']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
@@ -507,7 +507,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(134,239,172,0.2)',
+    backgroundColor: 'rgba(147,197,253,0.2)',
   },
   glassOrb2: {
     position: 'absolute',
@@ -516,7 +516,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(34,197,94,0.15)',
+    backgroundColor: 'rgba(37,99,235,0.15)',
   },
   bannerContentGlass: {
     flexDirection: 'row',
@@ -535,8 +535,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#86efac',
-    shadowColor: '#86efac',
+    backgroundColor: '#93c5fd',
+    shadowColor: '#93c5fd',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 6,
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardGlass,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.1)',
+    borderColor: 'rgba(37,99,235,0.1)',
     padding: 14,
     alignItems: 'center',
     ...shadows.card,
@@ -614,7 +614,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardGlass,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.1)',
+    borderColor: 'rgba(37,99,235,0.1)',
     padding: 16,
     marginBottom: 20,
     ...shadows.card,
@@ -699,7 +699,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cardGlass,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.08)',
+    borderColor: 'rgba(37,99,235,0.08)',
     padding: 16,
     ...shadows.card,
   },

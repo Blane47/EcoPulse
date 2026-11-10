@@ -41,7 +41,7 @@ export default function Collectors() {
         <button
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-2 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg"
-          style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
+          style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
         >
           <Plus size={16} /> Add Collector
         </button>

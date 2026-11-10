@@ -1,8 +1,8 @@
 export const colors = {
   primary: '#0f1623',
-  accent: '#22c55e',
-  accentDark: '#16a34a',
-  accentLight: '#dcfce7',
+  accent: '#2563eb',
+  accentDark: '#1d4ed8',
+  accentLight: '#dbeafe',
   critical: '#ef4444',
   criticalLight: '#fee2e2',
   warning: '#f59e0b',

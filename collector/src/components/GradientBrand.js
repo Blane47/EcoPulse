@@ -8,7 +8,7 @@ export default function GradientBrand({ fontSize = 20 }) {
         fontWeight: '900',
         letterSpacing: 4,
         fontFamily: 'Orbitron_900Black',
-        color: '#4ade80',
+        color: '#60a5fa',
       }}
     >
       ECOPULSE

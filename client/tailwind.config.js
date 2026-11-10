@@ -12,8 +12,8 @@ export default {
         sidebar: '#0f1623',
         'sidebar-hover': '#1a2332',
         accent: {
-          DEFAULT: '#22c55e',
-          dark: '#16a34a',
+          DEFAULT: '#2563eb',
+          dark: '#1d4ed8',
         },
         critical: '#ef4444',
         warning: '#f59e0b',
