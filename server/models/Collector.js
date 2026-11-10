@@ -20,6 +20,11 @@ const collectorSchema = new mongoose.Schema({
   zone: { type: String, required: true, enum: ['Molyko', 'Great Soppo', 'Bonduma', 'Buea Town'] },
   role: { type: String, enum: ['field_collector', 'zone_supervisor'], default: 'field_collector' },
   status: { type: String, enum: ['active', 'on-leave', 'inactive'], default: 'active' },
+  // Empty/null = HYSACAM municipal collector (existing behaviour, route + reports).
+  // Set = this worker belongs to a private operator and sees on-demand pickup jobs.
+  operatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Operator', default: null, index: true },
+  // On-demand availability toggle (private-operator workers).
+  onDuty: { type: Boolean, default: false },
   avatar: { type: String, default: null },
   binsAssigned: { type: Number, default: 0 },
   collectionsToday: { type: Number, default: 0 },

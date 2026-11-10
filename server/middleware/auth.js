@@ -47,4 +47,11 @@ const collectorOnly = (req, res, next) => {
   next();
 };
 
-module.exports = { protect, authorize, isCollector, collectorOnly };
+// The municipal council governs private operators (approve/reject/suspend, full list)
+// from the existing admin dashboard, so the "super-admin" is simply an authenticated
+// User with the 'admin' role — there is no separate account type. A Collector token
+// can never carry role 'admin', so this also keeps collectors out. Use as a pair:
+//   router.get('/', ...requireSuperAdmin, handler)
+const requireSuperAdmin = [protect, authorize('admin')];
+
+module.exports = { protect, authorize, isCollector, collectorOnly, requireSuperAdmin };

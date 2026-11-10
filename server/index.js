@@ -19,6 +19,8 @@ const notificationRoutes = require('./routes/notifications');
 const userRoutes = require('./routes/users');
 const searchRoutes = require('./routes/search');
 const leaveRoutes = require('./routes/leave');
+const operatorRoutes = require('./routes/operators');
+const pickupRoutes = require('./routes/pickups');
 const { startLeaveScheduler } = require('./utils/leaveStatus');
 
 const app = express();
@@ -42,6 +44,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/leave', leaveRoutes);
+app.use('/api/operators', operatorRoutes);
+app.use('/api/pickups', pickupRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

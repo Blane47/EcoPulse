@@ -172,6 +172,7 @@ export default function HomeScreen({ navigation }) {
     { Icon: () => <MapPinIcon size={26} color={colors.accent} />, label: en ? 'Nearby Bins' : 'Bacs Proches', sub: en ? 'BACS PROCHES' : 'NEARBY', onPress: () => navigation.navigate('Map') },
     { Icon: () => <CalendarIcon size={26} color={colors.accent} />, label: en ? 'Schedule' : 'Calendrier', sub: en ? 'CALENDRIER' : 'SCHEDULE', onPress: () => navigation.navigate('Collections') },
     { Icon: () => <BellIcon size={26} color="#F59E0B" />, label: en ? 'Notifications' : 'Alertes', sub: en ? 'ALERTES' : 'ALERTS', onPress: () => navigation.navigate('Reports', { tab: 'Notifications' }) },
+    { Icon: () => <CollectionIcon size={26} color={colors.accent} />, label: en ? 'On-Demand' : 'À la Demande', sub: en ? 'RAMASSAGE' : 'ON-DEMAND', onPress: () => navigation.navigate('Operators') },
   ];
 
   return (

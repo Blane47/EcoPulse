@@ -129,6 +129,21 @@ exports.updateMyAvatar = async (req, res, next) => {
   }
 };
 
+// A private-operator collector toggles their own on-demand availability.
+exports.setMyDuty = async (req, res, next) => {
+  try {
+    const collector = await Collector.findByIdAndUpdate(
+      req.user._id,
+      { onDuty: !!req.body.onDuty },
+      { new: true }
+    );
+    if (!collector) return res.status(404).json({ message: 'Collector not found' });
+    res.json({ onDuty: collector.onDuty });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.deleteCollector = async (req, res, next) => {
   try {
     const collector = await Collector.findByIdAndDelete(req.params.id);

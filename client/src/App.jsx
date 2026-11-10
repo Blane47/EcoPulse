@@ -11,6 +11,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Bins = lazy(() => import('./pages/Bins'));
 const MapView = lazy(() => import('./pages/MapView'));
 const Collectors = lazy(() => import('./pages/Collectors'));
+const Operators = lazy(() => import('./pages/Operators'));
 const Reports = lazy(() => import('./pages/Reports'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Chat = lazy(() => import('./pages/Chat'));
@@ -44,6 +45,7 @@ function AppRoutes() {
           <Route path="/map" element={<MapView />} />
           <Route path="/collectors" element={<Collectors />} />
           <Route path="/collectors/:id" element={<CollectorProfile />} />
+          <Route path="/operators" element={<Operators />} />
           <Route path="/leave" element={<Leave />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/community-reports" element={<CommunityReports />} />

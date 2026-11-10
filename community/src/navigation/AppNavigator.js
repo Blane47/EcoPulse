@@ -18,6 +18,7 @@ import ReportBinScreen from '../screens/ReportBinScreen';
 import NearbyMapScreen from '../screens/NearbyMapScreen';
 import ChatScreen from '../screens/ChatScreen';
 import ApplyCollectorScreen from '../screens/ApplyCollectorScreen';
+import OperatorsScreen from '../screens/OperatorsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -372,6 +373,7 @@ export default function AppNavigator() {
             <Stack.Screen name="ReportBin" component={ReportBinScreen} />
             <Stack.Screen name="Map" component={NearbyMapScreen} />
             <Stack.Screen name="ApplyCollector" component={ApplyCollectorScreen} />
+            <Stack.Screen name="Operators" component={OperatorsScreen} />
           </>
         ) : (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />

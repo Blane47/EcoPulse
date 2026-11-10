@@ -219,6 +219,24 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
 
+            {/* On-Demand entry — only for private-operator collectors */}
+            {user?.operatorId && (
+              <TouchableOpacity
+                style={styles.onDemandCard}
+                onPress={() => navigation.navigate('OnDemand')}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.onDemandTitle}>{en ? 'On-Demand Jobs' : 'Travaux à la demande'}</Text>
+                  <Text style={styles.onDemandSub}>
+                    {en ? 'View and update your private pickup jobs' : 'Voir et gérer vos ramassages privés'}
+                  </Text>
+                </View>
+                <Text style={styles.onDemandArrow}>›</Text>
+              </TouchableOpacity>
+            )}
+
             {/* Stats Row */}
             <View style={styles.statsRow}>
               {[
@@ -545,6 +563,23 @@ const styles = StyleSheet.create({
     opacity: 0.95,
     borderRadius: 14,
   },
+
+  // On-Demand entry
+  onDemandCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 16,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.accent,
+    ...shadows.soft,
+  },
+  onDemandTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+  onDemandSub: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  onDemandArrow: { fontSize: 24, fontWeight: '700', color: colors.accent, marginLeft: 10 },
 
   // Stats
   statsRow: {
