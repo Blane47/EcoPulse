@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, Ban, Truck, Star, MapPin, Package } from 'lucide-react';
+import { CheckCircle2, XCircle, Ban, Truck, Star, MapPin, Package, X, Phone, Mail, FileText, Calendar } from 'lucide-react';
 import Badge from '../components/ui/Badge';
 import {
   getOperators,
@@ -42,6 +42,7 @@ export default function Operators() {
   const [filter, setFilter] = useState('all');
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [detail, setDetail] = useState(null);
 
   const fetchOperators = async () => {
     try {
@@ -131,7 +132,12 @@ export default function Operators() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {shown.map((op) => (
           <div key={op._id} className="bg-white rounded-card border border-card-border p-5 flex flex-col hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => setDetail(op)}
+              className="flex items-start justify-between mb-4 text-left w-full"
+              title="View details"
+            >
               <div className="flex items-center gap-3 min-w-0">
                 {op.logoUrl ? (
                   <img src={op.logoUrl} alt={op.businessName} className="w-12 h-12 rounded-lg object-cover" />
@@ -141,12 +147,12 @@ export default function Operators() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-gray-900 truncate">{op.businessName}</h3>
+                  <h3 className="text-sm font-semibold text-gray-900 truncate hover:text-accent transition-colors">{op.businessName}</h3>
                   <p className="text-xs text-gray-500 truncate">{op.ownerName}</p>
                 </div>
               </div>
               <Badge variant={STATUS_BADGE[op.status] || 'default'}>{STATUS_LABEL[op.status] || op.status}</Badge>
-            </div>
+            </button>
 
             <div className="flex flex-wrap gap-1.5 mb-4">
               {(op.zonesServed || []).map((z) => (
@@ -221,6 +227,100 @@ export default function Operators() {
           </div>
         ))}
       </div>
+
+      {detail && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setDetail(null)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-start justify-between p-5 border-b border-card-border sticky top-0 bg-white">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center text-accent shrink-0">
+                  {detail.logoUrl ? <img src={detail.logoUrl} alt="" className="w-12 h-12 rounded-lg object-cover" /> : <Truck size={22} />}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-gray-900 truncate">{detail.businessName}</h3>
+                  <p className="text-xs text-gray-500">{detail.ownerName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant={STATUS_BADGE[detail.status] || 'default'}>{STATUS_LABEL[detail.status] || detail.status}</Badge>
+                <button onClick={() => setDetail(null)} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
+              </div>
+            </div>
+
+            <div className="p-5 space-y-5 text-sm">
+              {detail.description && <p className="text-gray-600">{detail.description}</p>}
+
+              {/* Contact */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 text-gray-600"><Mail size={14} className="text-gray-400" /> {detail.email || '—'}</div>
+                <div className="flex items-center gap-2 text-gray-600"><Phone size={14} className="text-gray-400" /> {detail.phone || '—'}</div>
+              </div>
+
+              {/* Coverage */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Coverage &amp; fleet</p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {(detail.zonesServed || []).map((z) => (
+                    <span key={z} className="flex items-center gap-1 text-[11px] px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full"><MapPin size={10} /> {z}</span>
+                  ))}
+                  {(detail.zonesServed || []).length === 0 && <span className="text-xs text-gray-400">No zones set</span>}
+                </div>
+                <p className="text-gray-600 text-xs">
+                  {(detail.vehicleTypes || []).join(', ') || 'No vehicles listed'}{detail.vehicleCount ? ` · ${detail.vehicleCount} vehicle(s)` : ''}
+                </p>
+              </div>
+
+              {/* Pricing */}
+              <div>
+                <p className="text-xs font-semibold text-gray-400 uppercase mb-2">Pricing</p>
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="flex justify-between bg-gray-50 rounded-lg px-3 py-2"><span className="text-gray-500">Base fee</span><span className="font-semibold text-gray-900">{money(detail.baseFee)}</span></div>
+                  <div className="flex justify-between bg-gray-50 rounded-lg px-3 py-2"><span className="text-gray-500">Commercial</span><span className="font-semibold text-gray-900">{money(detail.commercialRate)}</span></div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {['household', 'bulky', 'recyclables', 'garden'].map((w) => (
+                    <div key={w} className="flex justify-between px-3 py-1.5">
+                      <span className="text-gray-500 capitalize">{w}</span>
+                      <span className="text-gray-900">{detail.pricing?.[w] != null ? money(detail.pricing[w]) : money(detail.baseFee)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-400 mt-2">
+                  Load surcharge — small {money(detail.loadSurcharge?.small)} · medium {money(detail.loadSurcharge?.medium)} · large {money(detail.loadSurcharge?.large)}
+                </p>
+              </div>
+
+              {/* Verification + stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2 text-gray-600"><FileText size={14} className="text-gray-400" /> {detail.rccmNumber || 'No RCCM'}</div>
+                <div className="flex items-center gap-2 text-gray-600"><Star size={14} className="text-gray-400" /> {detail.reviewCount ? `${detail.rating?.toFixed(1)} (${detail.reviewCount})` : 'No ratings'}</div>
+                <div className="flex items-center gap-2 text-gray-600"><Package size={14} className="text-gray-400" /> {detail.pickupsCompleted || 0} pickups</div>
+                <div className="flex items-center gap-2 text-gray-600"><Calendar size={14} className="text-gray-400" /> {detail.createdAt ? new Date(detail.createdAt).toLocaleDateString() : '—'}</div>
+              </div>
+              {detail.licenseUrl && (
+                <a href={detail.licenseUrl} target="_blank" rel="noreferrer" className="inline-block text-accent text-sm font-medium hover:underline">View licence document</a>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 pt-2 border-t border-card-border">
+                {detail.status === 'pending' && (
+                  <>
+                    <button disabled={busyId === detail._id} onClick={() => runAction(detail._id, approveOperator).then(() => setDetail(null))} className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-accent text-white rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50"><CheckCircle2 size={15} /> Approve</button>
+                    <button disabled={busyId === detail._id} onClick={() => runAction(detail._id, rejectOperator).then(() => setDetail(null))} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50"><XCircle size={15} /> Reject</button>
+                  </>
+                )}
+                {detail.status === 'approved' && (
+                  <button disabled={busyId === detail._id} onClick={() => runAction(detail._id, suspendOperator).then(() => setDetail(null))} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-red-300 text-red-600 rounded-lg text-sm font-medium hover:bg-red-50 disabled:opacity-50"><Ban size={15} /> Suspend</button>
+                )}
+                {(detail.status === 'suspended' || detail.status === 'rejected') && (
+                  <button disabled={busyId === detail._id} onClick={() => runAction(detail._id, approveOperator).then(() => setDetail(null))} className="flex-1 flex items-center justify-center gap-1.5 py-2 border border-accent text-accent rounded-lg text-sm font-medium hover:bg-accent hover:text-white disabled:opacity-50"><CheckCircle2 size={15} /> Re-approve</button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
