@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { OperatorAuthProvider, useOperatorAuth } from '../../context/OperatorAuthContext';
 import OperatorLogin from './OperatorLogin';
+import OperatorRegister from './OperatorRegister';
 import OperatorDashboard from './OperatorDashboard';
 
 function Guard({ children }) {
@@ -15,6 +16,7 @@ export default function OperatorApp() {
     <OperatorAuthProvider>
       <Routes>
         <Route path="login" element={<OperatorLogin />} />
+        <Route path="register" element={<OperatorRegister />} />
         <Route path="" element={<Guard><OperatorDashboard /></Guard>} />
       </Routes>
     </OperatorAuthProvider>

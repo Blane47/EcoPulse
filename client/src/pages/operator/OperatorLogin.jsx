@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { useOperatorAuth } from '../../context/OperatorAuthContext';
 import { loginOperator } from '../../api/operatorPortal';
@@ -73,6 +73,11 @@ export default function OperatorLogin() {
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
+
+        <p className="text-sm text-gray-500 text-center mt-5">
+          New operator?{' '}
+          <Link to="/operator/register" className="text-accent font-medium hover:underline">Register your business</Link>
+        </p>
       </div>
     </div>
   );

@@ -8,6 +8,12 @@ export const loginOperator = async (email, password) => {
   return data; // { operator, token }
 };
 
+// Public self-registration — starts the operator as 'pending' until a super-admin approves.
+export const registerOperator = async (payload) => {
+  const { data } = await operatorApi.post('/operators/register', payload);
+  return data;
+};
+
 export const getMe = async () => {
   const { data } = await operatorApi.get('/operators/me');
   return data;
