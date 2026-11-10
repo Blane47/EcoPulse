@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Truck, LogOut, MapPin, Star, Package, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Truck, LogOut, MapPin, Star, Package, RefreshCw, Settings } from 'lucide-react';
 import { useOperatorAuth } from '../../context/OperatorAuthContext';
 import {
   getMe, getJobs, getMyCollectors, acceptJob, advanceJob, updateOperatorProfile,
@@ -30,6 +31,7 @@ function Badge({ status }) {
 
 export default function OperatorDashboard() {
   const { operator, onLogout, refresh } = useOperatorAuth();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [collectors, setCollectors] = useState([]);
   const [assign, setAssign] = useState({}); // jobId -> collectorId
@@ -131,6 +133,9 @@ export default function OperatorDashboard() {
             >
               <span className={`w-2 h-2 rounded-full ${accepting ? 'bg-accent' : 'bg-gray-400'}`} />
               {accepting ? 'Accepting jobs' : 'Not accepting'}
+            </button>
+            <button onClick={() => navigate('/operator/settings')} className="text-gray-400 hover:text-accent" title="Profile & pricing">
+              <Settings size={18} />
             </button>
             <button onClick={onLogout} className="text-gray-400 hover:text-red-500" title="Sign out">
               <LogOut size={18} />
