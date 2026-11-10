@@ -12,3 +12,6 @@ Thumbs.db
 
 # Local tooling artifacts
 .artifacts/
+
+# build-dashboard mod artifact (generated into server/ by an earlier version)
+ecopulse-build-dashboard.html
