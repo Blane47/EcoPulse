@@ -145,7 +145,7 @@ export default function OperatorDashboard() {
           {[
             { k: 'Incoming', v: incoming.length },
             { k: 'Active', v: active.length },
-            { k: 'Rating', v: operator?.reviewCount ? `${operator.rating?.toFixed(1)}★` : '—', icon: Star },
+            { k: 'Rating', v: operator?.reviewCount ? operator.rating?.toFixed(1) : '—', icon: Star },
             { k: 'Completed', v: operator?.pickupsCompleted || 0, icon: Package },
           ].map((c) => (
             <div key={c.k} className="bg-white rounded-xl border border-card-border p-4">

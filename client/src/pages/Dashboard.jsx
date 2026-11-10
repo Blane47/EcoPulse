@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trash2, TrendingUp, AlertTriangle, Users, Megaphone } from 'lucide-react';
+import { Trash2, TrendingUp, AlertTriangle, Users, Megaphone, Map, ClipboardList, MessageSquare, ArrowUpRight } from 'lucide-react';
 import AnnouncementModal from '../components/ui/AnnouncementModal';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import StatCard from '../components/ui/StatCard';
@@ -140,7 +140,7 @@ export default function Dashboard() {
               <button onClick={() => setShowAll(false)} className="text-sm text-gray-400 font-medium hover:text-gray-600 transition-colors">Show Less</button>
             ) : (
               <button onClick={() => { setShowAll(true); fetchAllActivity(); }} className="text-sm text-accent font-semibold hover:underline flex items-center gap-1">
-                View All <span className="text-xs">↗</span>
+                View All <ArrowUpRight size={14} />
               </button>
             )}
           </div>
@@ -174,28 +174,28 @@ export default function Dashboard() {
               onClick={() => navigate('/map')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-card-border hover:bg-gray-50 transition-colors text-left"
             >
-              <span className="text-lg">🗺️</span>
+              <Map size={18} className="text-accent" />
               <span className="text-sm font-medium text-gray-700">Open Live Map</span>
             </button>
             <button
               onClick={() => navigate('/collectors')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-card-border hover:bg-gray-50 transition-colors text-left"
             >
-              <span className="text-lg">👥</span>
+              <Users size={18} className="text-accent" />
               <span className="text-sm font-medium text-gray-700">Manage Collectors</span>
             </button>
             <button
               onClick={() => navigate('/community-reports')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-card-border hover:bg-gray-50 transition-colors text-left"
             >
-              <span className="text-lg">📋</span>
+              <ClipboardList size={18} className="text-accent" />
               <span className="text-sm font-medium text-gray-700">Review Reports</span>
             </button>
             <button
               onClick={() => navigate('/chat')}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-card-border hover:bg-gray-50 transition-colors text-left"
             >
-              <span className="text-lg">💬</span>
+              <MessageSquare size={18} className="text-accent" />
               <span className="text-sm font-medium text-gray-700">Open Chat</span>
             </button>
           </div>

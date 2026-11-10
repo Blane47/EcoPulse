@@ -1,3 +1,5 @@
+import { ArrowUp, ArrowDown } from 'lucide-react';
+
 export default function StatCard({ icon, label, value, trend, trendUp, color = 'green' }) {
   const colorMap = {
     green: 'bg-green-50 text-accent',
@@ -15,8 +17,8 @@ export default function StatCard({ icon, label, value, trend, trendUp, color = '
         <p className="text-sm text-gray-500">{label}</p>
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         {trend && (
-          <p className={`text-xs mt-0.5 ${trendUp ? 'text-accent' : 'text-critical'}`}>
-            {trendUp ? '↑' : '↓'} {trend}
+          <p className={`text-xs mt-0.5 flex items-center gap-0.5 ${trendUp ? 'text-accent' : 'text-critical'}`}>
+            {trendUp ? <ArrowUp size={12} /> : <ArrowDown size={12} />} {trend}
           </p>
         )}
       </div>

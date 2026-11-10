@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Upload, MapPin } from 'lucide-react';
+import { X, Upload, MapPin, Leaf, Recycle, Trash2 } from 'lucide-react';
 import { zones } from '../../data/mockData';
 
 export default function AddBinModal({ isOpen, onClose }) {
@@ -19,9 +19,9 @@ export default function AddBinModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const binTypes = [
-    { name: 'Organic', icon: '🍂' },
-    { name: 'Recyclable', icon: '♻️' },
-    { name: 'General', icon: '🗑️' },
+    { name: 'Organic', Icon: Leaf },
+    { name: 'Recyclable', Icon: Recycle },
+    { name: 'General', Icon: Trash2 },
   ];
 
   const handleChange = (field, value) => {
@@ -130,7 +130,7 @@ export default function AddBinModal({ isOpen, onClose }) {
                         : 'border-card-border hover:border-gray-300'
                     }`}
                   >
-                    <span className="text-2xl">{type.icon}</span>
+                    <type.Icon size={22} className="text-gray-600" />
                     <span className="text-sm font-medium text-gray-700">{type.name}</span>
                   </button>
                 ))}

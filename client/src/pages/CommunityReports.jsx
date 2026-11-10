@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { MapPin, Phone, User, Clock, Eye, CheckCircle, AlertTriangle, UserCheck, ZoomIn, ListIcon, MapIcon, Camera } from 'lucide-react';
+import { MapPin, Phone, User, Clock, Eye, CheckCircle, AlertTriangle, UserCheck, ZoomIn, ListIcon, MapIcon, Camera, ClipboardList } from 'lucide-react';
 import api from '../api/axios';
 import { getCollectors } from '../api/collectors';
 import ReportsMap from '../components/reports/ReportsMap';
@@ -210,7 +210,7 @@ export default function CommunityReports() {
             <ReportsMap reports={filteredReports} selectedId={selectedReport?._id} onSelect={selectReport} />
           ) : filteredReports.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-4xl mb-3">📋</p>
+              <ClipboardList size={36} className="mx-auto mb-3 text-gray-300" />
               <p className="text-gray-500">{reports.length === 0 ? 'No reports yet' : `No ${statusConfig[filter].label.toLowerCase()} reports`}</p>
             </div>
           ) : (
@@ -311,8 +311,8 @@ export default function CommunityReports() {
               <p className="text-xs text-gray-400 font-medium mb-1">LOCATION</p>
               <p className="text-sm text-gray-900 font-semibold">{selectedReport.location}</p>
               {selectedReport.coordinates?.lat ? (
-                <p className="text-xs text-green-600 mt-1">
-                  📍 {selectedReport.coordinates.lat.toFixed(5)}, {selectedReport.coordinates.lng.toFixed(5)}
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <MapPin size={12} /> {selectedReport.coordinates.lat.toFixed(5)}, {selectedReport.coordinates.lng.toFixed(5)}
                 </p>
               ) : null}
             </div>
@@ -393,7 +393,7 @@ export default function CommunityReports() {
                     {collectorOptions(selectedReport.zone).map((c) => (
                       <option key={c._id} value={c._id} disabled={c.status === 'inactive'}>
                         {c.name} — {c.zone}
-                        {c.zone === selectedReport.zone ? ' ✓' : ''}
+                        {c.zone === selectedReport.zone ? ' (same zone)' : ''}
                         {c.status === 'on-leave' ? ' (on leave)' : c.status === 'inactive' ? ' (inactive)' : ''}
                       </option>
                     ))}
@@ -409,7 +409,7 @@ export default function CommunityReports() {
               )}
               {selectedReport.status !== 'collected' && (
                 <p className="text-[11px] text-gray-400 mt-1.5">
-                  ✓ = works in {selectedReport.zone}. The collector is notified in the EcoPulse Collector app.
+                  “(same zone)” marks collectors who work in {selectedReport.zone}. The collector is notified in the EcoPulse Collector app.
                 </p>
               )}
             </div>

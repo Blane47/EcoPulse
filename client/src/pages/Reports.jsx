@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, BarChart3, TrendingUp, AlertTriangle, Truck } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -81,7 +81,7 @@ export default function Reports() {
             <button
               onClick={() => window.print()}
               className="flex items-center gap-2 text-white px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-md hover:shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)' }}
+              style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
             >
               <FileText size={16} />
               Export PDF
@@ -94,25 +94,25 @@ export default function Reports() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <StatCard
-          icon={<span className="text-lg">📊</span>}
+          icon={<BarChart3 size={20} />}
           label="Total Collections"
           value={reportKPIs.totalCollections.toLocaleString()}
           color="green"
         />
         <StatCard
-          icon={<span className="text-lg">📈</span>}
+          icon={<TrendingUp size={20} />}
           label="Avg Fill"
           value={`${reportKPIs.avgFill}%`}
           color="blue"
         />
         <StatCard
-          icon={<span className="text-lg">⚠️</span>}
+          icon={<AlertTriangle size={20} />}
           label="Zones at Risk"
           value={reportKPIs.zonesAtRisk}
           color="yellow"
         />
         <StatCard
-          icon={<span className="text-lg">🚛</span>}
+          icon={<Truck size={20} />}
           label="Total Collected"
           value={reportKPIs.totalCollected}
           color="green"

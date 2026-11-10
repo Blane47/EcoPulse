@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock, KeyRound, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Phone, MapPin, Truck, Calendar, Mail, Shield, TrendingUp, Clock, KeyRound, AlertTriangle, Check, ClipboardList } from 'lucide-react';
 import { getCollectorById, updateCollector, resetCollectorPassword } from '../api/collectors';
 import { formatRange, formatDay, leaveLength, pluralDays, leavePhase, leavePill } from '../utils/leave';
 import api from '../api/axios';
@@ -170,7 +170,7 @@ export default function CollectorProfile() {
                     >
                       <div className={`w-2.5 h-2.5 rounded-full ${s.color}`} />
                       {s.label}
-                      {collector.status === s.value && <span className="ml-auto text-green-500">✓</span>}
+                      {collector.status === s.value && <Check size={16} className="ml-auto text-green-500" />}
                     </button>
                   ))}
                 </div>
@@ -482,7 +482,7 @@ export default function CollectorProfile() {
             <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Recent Activity</h2>
             {activity.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-3xl mb-2">📋</p>
+                <ClipboardList size={28} className="mx-auto mb-2 text-gray-300" />
                 <p className="text-sm text-gray-400">No recent activity</p>
               </div>
             ) : (
