@@ -6,9 +6,9 @@ import {
 import { useZone } from '../context/ZoneContext';
 import { colors, shadows } from '../theme';
 import TealHeader from '../components/TealHeader';
-import { StarIcon } from '../components/Icons';
+import { StarIcon, StarOutlineIcon } from '../components/Icons';
 import {
-  getAvailableOperators, createPickup, getMyPickups, cancelPickup, estimateFee,
+  getAvailableOperators, createPickup, getMyPickups, cancelPickup, estimateFee, ratePickup,
 } from '../api/operators';
 
 const WASTE_TYPES = [
@@ -51,6 +51,12 @@ export default function OperatorsScreen() {
   const [loadSize, setLoadSize] = useState('medium');
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Rating modal
+  const [rating, setRating] = useState(null); // the completed pickup being rated
+  const [stars, setStars] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -124,6 +130,29 @@ export default function OperatorsScreen() {
         },
       ]
     );
+  };
+
+  const openRating = (pickup) => {
+    setRating(pickup);
+    setStars(5);
+    setRatingComment('');
+  };
+
+  const submitRating = async () => {
+    if (!rating) return;
+    setRatingSubmitting(true);
+    try {
+      await ratePickup(rating._id, { stars, comment: ratingComment.trim() });
+      setRating(null);
+      await load();
+    } catch (err) {
+      Alert.alert(
+        en ? 'Could not submit rating' : 'Évaluation impossible',
+        err.response?.data?.message || (en ? 'Please try again.' : 'Veuillez réessayer.')
+      );
+    } finally {
+      setRatingSubmitting(false);
+    }
   };
 
   const fee = selected ? estimateFee(selected, wasteType, loadSize) : 0;
@@ -221,6 +250,23 @@ export default function OperatorsScreen() {
                   <Text style={styles.cancelBtnText}>{en ? 'Cancel' : 'Annuler'}</Text>
                 </TouchableOpacity>
               )}
+              {p.status === 'completed' && (
+                p.rating?.stars ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 12 }}>
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      n <= p.rating.stars
+                        ? <StarIcon key={n} size={16} color={colors.warning} />
+                        : <StarOutlineIcon key={n} size={16} color={colors.textMuted} />
+                    ))}
+                    <Text style={{ fontSize: 12, color: colors.textSecondary, marginLeft: 4 }}>{en ? 'Your rating' : 'Votre note'}</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity style={styles.rateBtn} onPress={() => openRating(p)} activeOpacity={0.85}>
+                    <StarIcon size={16} color="#fff" />
+                    <Text style={styles.rateBtnText}>{en ? 'Rate this pickup' : 'Évaluer le ramassage'}</Text>
+                  </TouchableOpacity>
+                )
+              )}
             </View>
           );
         })}
@@ -287,6 +333,37 @@ export default function OperatorsScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Rating modal */}
+      <Modal visible={!!rating} transparent animationType="slide" onRequestClose={() => setRating(null)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.sheet}>
+            <Text style={styles.sheetTitle}>{rating?.operator?.businessName || (en ? 'Rate pickup' : 'Évaluer')}</Text>
+            <Text style={styles.sheetSub}>{en ? 'How was your pickup?' : 'Comment était votre ramassage?'}</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 10, marginVertical: 18 }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity key={n} onPress={() => setStars(n)} activeOpacity={0.7}>
+                  {n <= stars ? <StarIcon size={36} color={colors.warning} /> : <StarOutlineIcon size={36} color={colors.textMuted} />}
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={[styles.input, { minHeight: 72, textAlignVertical: 'top' }]}
+              value={ratingComment}
+              onChangeText={setRatingComment}
+              placeholder={en ? 'Add a comment (optional)' : 'Ajouter un commentaire (facultatif)'}
+              placeholderTextColor={colors.textMuted}
+              multiline
+            />
+            <TouchableOpacity style={[styles.primaryBtn, ratingSubmitting && { opacity: 0.6 }]} onPress={submitRating} disabled={ratingSubmitting} activeOpacity={0.85}>
+              {ratingSubmitting ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>{en ? 'Submit Rating' : 'Envoyer l\'évaluation'}</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.ghostBtn} onPress={() => setRating(null)}>
+              <Text style={styles.ghostBtnText}>{en ? 'Cancel' : 'Annuler'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -317,6 +394,8 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   cancelBtn: { borderWidth: 1, borderColor: '#fca5a5', backgroundColor: '#fef2f2', borderRadius: 12, paddingVertical: 10, alignItems: 'center', marginTop: 12 },
   cancelBtnText: { color: colors.critical, fontSize: 13, fontWeight: '700' },
+  rateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 11, marginTop: 12 },
+  rateBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
   statusPill: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
   statusText: { fontSize: 11, fontWeight: '700' },

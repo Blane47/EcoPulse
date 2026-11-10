@@ -28,6 +28,12 @@ export const cancelPickup = async (id) => {
   return data;
 };
 
+// Resident rates a completed pickup (1–5 stars + optional comment).
+export const ratePickup = async (id, { stars, comment }) => {
+  const { data } = await api.post(`/pickups/${id}/rate`, { stars, comment });
+  return data;
+};
+
 // Mirrors server/utils/pricing.js so the resident sees the fee before submitting.
 const LOAD_SURCHARGE = { small: 0, medium: 500, large: 1500 };
 export const estimateFee = (operator, wasteType, loadSize) => {
