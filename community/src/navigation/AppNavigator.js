@@ -6,8 +6,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useZone } from '../context/ZoneContext';
 import api from '../api/axios';
 import { colors } from '../theme';
-import { HomeIcon, CalendarIcon, CollectionIcon, ChatIcon, ReportIcon, SettingsIcon } from '../components/TabIcons';
-import { MapPinIcon, LogoutIcon, GlobeIcon } from '../components/Icons';
+import { HomeIcon, WarningIcon, TruckIcon, ChatBubbleIcon, UserIcon, MapPinIcon, LogoutIcon, GlobeIcon } from '../components/Icons';
 import TealHeader from '../components/TealHeader';
 
 import OnboardingScreen from '../screens/OnboardingScreen';
@@ -23,13 +22,16 @@ import OperatorsScreen from '../screens/OperatorsScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
+const BLUE = '#2563eb';
 const tabConfig = {
-  Schedule: { Icon: HomeIcon, label: 'HOME' },
-  Collections: { Icon: CollectionIcon, label: 'COLLECTION' },
-  Chat: { Icon: ChatIcon, label: 'CHAT' },
-  Reports: { Icon: ReportIcon, label: 'REPORTS' },
-  Settings: { Icon: SettingsIcon, label: 'SETTINGS' },
+  Home: { Icon: HomeIcon, label: 'Home' },
+  Report: { Icon: WarningIcon, label: 'Report' },
+  Pickup: { Icon: TruckIcon, label: 'Pickup' },
+  Chat: { Icon: ChatBubbleIcon, label: 'Chat' },
+  Profile: { Icon: UserIcon, label: 'Profile' },
 };
+
+function EmptyTab() { return <View style={{ flex: 1, backgroundColor: colors.background }} />; }
 
 function SettingsPlaceholder({ navigation }) {
   const { clearZone, clearProfile, language, selectLanguage, profile, registerProfile, autoZone, toggleAutoZone } = useZone();
@@ -277,84 +279,74 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        tabBarShowLabel: false,
         tabBarIcon: ({ focused }) => {
-          const { Icon } = tabConfig[route.name] || {};
+          const { Icon, label } = tabConfig[route.name] || {};
+          const tint = focused ? BLUE : '#64748b';
           return (
-          <View style={{
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 44,
-            height: 32,
-          }}>
-            {Icon && <Icon size={22} color={focused ? '#fff' : 'rgba(255,255,255,0.5)'} />}
-            {route.name === 'Chat' && unreadChat && (
-              <View style={{
-                position: 'absolute',
-                top: 0,
-                right: 4,
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: '#ef4444',
-                borderWidth: 1.5,
-                borderColor: '#1a1a2e',
-              }} />
-            )}
-          </View>
-        );
+            <View style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 12,
+              paddingVertical: 4,
+              borderRadius: 12,
+              minWidth: 56,
+              backgroundColor: focused ? '#eff6ff' : 'transparent',
+            }}>
+              <View>
+                {Icon && <Icon size={22} color={tint} strokeWidth={focused ? 2 : 1.6} />}
+                {route.name === 'Chat' && unreadChat && (
+                  <View style={{
+                    position: 'absolute', top: -2, right: -4,
+                    width: 9, height: 9, borderRadius: 5,
+                    backgroundColor: '#ef4444', borderWidth: 1.5, borderColor: '#fff',
+                  }} />
+                )}
+              </View>
+              <Text style={{ fontSize: 11, fontWeight: focused ? '700' : '500', color: tint, marginTop: 2 }}>
+                {label}
+              </Text>
+            </View>
+          );
         },
-        tabBarLabel: ({ focused }) => (
-          <Text style={{
-            fontSize: 10,
-            fontWeight: focused ? '700' : '500',
-            color: focused ? '#fff' : 'rgba(255,255,255,0.5)',
-            letterSpacing: 0.5,
-            marginTop: -2,
-          }}>
-            {tabConfig[route.name]?.label}
-          </Text>
-        ),
-        tabBarBackground: () => (
-          <View style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            borderRadius: 32,
-            backgroundColor: '#1a1a2e',
-          }} />
-        ),
         tabBarStyle: {
-          position: 'absolute',
-          bottom: 10,
-          left: 20,
-          right: 20,
-          height: 64,
+          height: 66,
           paddingBottom: 8,
           paddingTop: 8,
-          borderTopWidth: 0,
-          backgroundColor: 'transparent',
-          borderRadius: 32,
-          elevation: 12,
+          borderTopWidth: 1,
+          borderTopColor: '#eef2f9',
+          backgroundColor: '#fff',
+          elevation: 8,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.3,
-          shadowRadius: 16,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 6,
         },
       })}
     >
-      <Tab.Screen name="Schedule" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen
+        name="Report"
+        component={EmptyTab}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('ReportBin'); },
+        })}
+      />
+      <Tab.Screen
+        name="Pickup"
+        component={EmptyTab}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('Operators'); },
+        })}
+      />
       <Tab.Screen
         name="Chat"
         component={ChatScreen}
         listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('ChatFullScreen');
-          },
+          tabPress: (e) => { e.preventDefault(); navigation.navigate('ChatFullScreen'); },
         })}
       />
-      <Tab.Screen name="Reports" component={MyReportsScreen} />
-      <Tab.Screen name="Collections" component={ScheduleScreen} />
-      <Tab.Screen name="Settings" component={SettingsPlaceholder} />
+      <Tab.Screen name="Profile" component={SettingsPlaceholder} />
     </Tab.Navigator>
   );
 }
@@ -375,6 +367,8 @@ export default function AppNavigator() {
             <Stack.Screen name="Map" component={NearbyMapScreen} />
             <Stack.Screen name="ApplyCollector" component={ApplyCollectorScreen} />
             <Stack.Screen name="Operators" component={OperatorsScreen} />
+            <Stack.Screen name="Reports" component={MyReportsScreen} />
+            <Stack.Screen name="Collections" component={ScheduleScreen} />
           </>
         ) : (
           <Stack.Screen name="Onboarding" component={OnboardingScreen} />
