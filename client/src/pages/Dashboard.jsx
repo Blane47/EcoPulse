@@ -146,7 +146,7 @@ export default function Dashboard() {
               <Tooltip
                 contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}
               />
-              <Line type="monotone" dataKey="collections" stroke="#22c55e" strokeWidth={2.5} dot={{ fill: '#22c55e', r: 4 }} />
+              <Line type="monotone" dataKey="collections" stroke="#2563eb" strokeWidth={2.5} dot={{ fill: '#2563eb', r: 4 }} />
               <Line type="monotone" dataKey="target" stroke="#60a5fa" strokeWidth={2} strokeDasharray="6 4" dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -162,7 +162,7 @@ export default function Dashboard() {
               <XAxis type="number" tick={{ fontSize: 11, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
               <YAxis dataKey="zone" type="category" tick={{ fontSize: 11, fill: '#6b7280' }} width={85} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #e5e7eb' }} />
-              <Bar dataKey="collections" fill="#22c55e" radius={[0, 8, 8, 0]} barSize={18} />
+              <Bar dataKey="collections" fill="#2563eb" radius={[0, 8, 8, 0]} barSize={18} />
             </BarChart>
           </ResponsiveContainer>
         </div>

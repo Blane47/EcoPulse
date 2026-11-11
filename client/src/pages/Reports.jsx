@@ -135,9 +135,9 @@ export default function Reports() {
               <Line
                 type="monotone"
                 dataKey="actual"
-                stroke="#22c55e"
+                stroke="#2563eb"
                 strokeWidth={2}
-                dot={{ fill: '#22c55e', r: 4 }}
+                dot={{ fill: '#2563eb', r: 4 }}
                 name="Actual"
               />
               <Line
