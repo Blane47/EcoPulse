@@ -10,7 +10,7 @@ import { ArrowLeftIcon, ShieldCheckIcon, SendIcon } from '../components/Icons';
 import { ChatIcon } from '../components/TabIcons';
 import { playSend, playReceive } from '../utils/sounds';
 
-export default function ChatScreen() {
+export default function ChatScreen({ navigation }) {
   const { profile, language } = useZone();
   const en = language === 'en';
   const [messages, setMessages] = useState([]);
@@ -122,13 +122,21 @@ export default function ChatScreen() {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.cardBorder }]}>
-        <View style={[styles.headerAvatar, { backgroundColor: colors.accentLight }]}>
-          <ShieldCheckIcon size={20} color={colors.accent} />
+      <View style={styles.header}>
+        {navigation?.canGoBack?.() && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+            <ArrowLeftIcon size={22} color={colors.text} />
+          </TouchableOpacity>
+        )}
+        <View style={styles.headerAvatar}>
+          <ShieldCheckIcon size={20} color="#2563eb" />
         </View>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{en ? 'Admin Support' : 'Support Admin'}</Text>
-          <Text style={[styles.headerSub, { color: colors.textMuted }]}>{en ? 'Usually replies within an hour' : 'Répond généralement dans l\'heure'}</Text>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{en ? 'Admin Support' : 'Support Admin'}</Text>
+            <View style={styles.onlineDot} />
+          </View>
+          <Text style={[styles.headerSub, { color: colors.textMuted }]}>{en ? 'Buea Council · usually replies within an hour' : 'Conseil de Buea · répond dans l\'heure'}</Text>
         </View>
       </View>
 
@@ -223,22 +231,24 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 14,
-    backgroundColor: colors.card,
+    gap: 10,
+    paddingTop: 12,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: colors.cardBorder,
+    borderBottomColor: '#eef2f9',
   },
+  backBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   headerAvatar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: colors.accentLight,
+    backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  onlineDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' },
   headerTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
   headerSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
 
