@@ -5,9 +5,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useZone } from '../context/ZoneContext';
 import { colors, shadows } from '../theme';
 import api from '../api/axios';
-import TealHeader from '../components/TealHeader';
-import { BellIcon, RecycleIcon, MapPinIcon, StarOutlineIcon, StarIcon, ShieldCheckIcon, TrophyIcon } from '../components/Icons';
+import { BellIcon, RecycleIcon, MapPinIcon, StarOutlineIcon, StarIcon, ShieldCheckIcon, TrophyIcon, ArrowLeftIcon, UserIcon, WarningIcon } from '../components/Icons';
 import { CollectionIcon, ReportIcon } from '../components/TabIcons';
+
+const BLUE = '#2563eb';
 
 const TABS = ['Notifications', 'My Reports'];
 
@@ -78,24 +79,29 @@ export default function MyReportsScreen({ navigation, route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <TealHeader
-        title={en ? 'Updates' : 'Mises à jour'}
-        subtitle={en ? 'Stay updated with your local impact' : 'Restez informé de votre impact local'}
-      />
+      {/* App bar */}
+      <View style={styles.appBar}>
+        <View style={styles.appBarLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}><ArrowLeftIcon size={22} color={colors.text} /></TouchableOpacity>
+          <Text style={styles.appBarTitle}>{en ? 'Updates' : 'Mises à jour'}</Text>
+        </View>
+        <View style={styles.avatar}><UserIcon size={18} color="#fff" /></View>
+      </View>
 
-      {/* Tabs */}
-      <View style={[styles.tabsRow, { borderBottomColor: colors.cardBorder }]}>
-        {TABS.map((tab) => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && { borderBottomColor: colors.accent }]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, { color: colors.textMuted }, activeTab === tab && { color: colors.text, fontWeight: '700' }]}>
-              {tab}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Segmented tabs */}
+      <View style={styles.segment}>
+        {[
+          { key: 'My Reports', label: en ? 'My Reports' : 'Signalements', Icon: WarningIcon },
+          { key: 'Notifications', label: en ? 'Alerts' : 'Alertes', Icon: BellIcon },
+        ].map((t) => {
+          const on = activeTab === t.key;
+          return (
+            <TouchableOpacity key={t.key} style={[styles.segBtn, on && styles.segActive]} onPress={() => setActiveTab(t.key)} activeOpacity={0.8}>
+              <t.Icon size={16} color={on ? BLUE : colors.textSecondary} />
+              <Text style={[styles.segText, on && styles.segTextActive]}>{t.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {activeTab === 'My Reports' ? (
@@ -298,6 +304,17 @@ export default function MyReportsScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
+  appBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, height: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eef2f9' },
+  appBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  appBarTitle: { fontSize: 19, fontWeight: '800', color: colors.text },
+  avatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center' },
+  segment: { flexDirection: 'row', backgroundColor: '#e2e8f0', borderRadius: 12, padding: 4, marginHorizontal: 16, marginTop: 14, marginBottom: 6 },
+  segBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9, borderRadius: 9 },
+  segActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  segText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary },
+  segTextActive: { color: BLUE },
+
   // Tabs
   tabsRow: {
     flexDirection: 'row',
@@ -396,7 +413,7 @@ const styles = StyleSheet.create({
   impactCard: {
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#1a472a',
+    backgroundColor: '#0b3a66',
     marginTop: 10,
   },
   impactOverlay: {
