@@ -1,493 +1,288 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, ImageBackground, Alert, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Circle } from 'react-native-svg';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
-import { colors, gradients, shadows } from '../theme';
-import { CameraIcon, LogoutIcon } from '../components/Icons';
+import { colors } from '../theme';
+import {
+  RecycleIcon, StarIcon, CheckIcon, LogoutIcon, ChevronRightIcon, CameraIcon,
+  ClockIcon, BellIcon, ShieldCheckIcon, ChatBubbleIcon, TruckIcon,
+} from '../components/Icons';
 import api from '../api/axios';
-import TealHeader from '../components/TealHeader';
 import { shrinkPhoto } from '../utils/shrinkPhoto';
+import { getAssignedPickups, setDuty } from '../api/pickups';
 
-function PerformanceCircle({ percentage = 0, size = 80, strokeWidth = 8 }) {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-  return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Svg width={size} height={size}>
-        <Circle cx={size / 2} cy={size / 2} r={radius} stroke={colors.cardBorder} strokeWidth={strokeWidth} fill="none" />
-        <Circle
-          cx={size / 2} cy={size / 2} r={radius}
-          stroke={colors.accent} strokeWidth={strokeWidth} fill="none"
-          strokeDasharray={circumference} strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round" transform={`rotate(-90 ${size / 2} ${size / 2})`}
-        />
-      </Svg>
-      <Text style={styles.perfValue}>{percentage}%</Text>
-    </View>
-  );
-}
+const BLUE = '#2563eb';
+const fcfa = (n) => `${Number(n || 0).toLocaleString()} FCFA`;
+const isToday = (d) => { const x = new Date(d); const n = new Date(); return x.toDateString() === n.toDateString(); };
+const isThisWeek = (d) => { const x = new Date(d); const n = new Date(); const diff = (n - x) / 86400000; return diff >= 0 && diff < 7; };
 
 export default function ProfileScreen({ navigation }) {
   const { user, logout, updateUser, language, selectLanguage } = useAuth();
   const en = language === 'en';
   const [uploading, setUploading] = useState(false);
-  const [profileStats, setProfileStats] = useState({ bins: 0, assigned: 0, issues: 0 });
-  const [statsError, setStatsError] = useState(false);
+  const [jobs, setJobs] = useState([]);
+  const [onDuty, setOnDuty] = useState(!!user?.onDuty);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const { data } = await api.get('/collectors/me/route');
-      const bins = data.bins || [];
-      const collected = bins.filter(b => b.fillLevel === 0 || b.status === 'optimal').length;
-      setProfileStats({
-        bins: collected,
-        assigned: bins.length,
-        issues: bins.filter(b => b.status === 'critical').length,
-      });
-      setStatsError(false);
-    } catch {
-      setStatsError(true);
-    }
+  const load = useCallback(async () => {
+    try { setJobs(await getAssignedPickups()); } catch { /* municipal collector / offline */ }
   }, []);
+  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setOnDuty(!!user?.onDuty); }, [user?.onDuty]);
 
-  useEffect(() => { fetchStats(); }, [fetchStats]);
+  const toggleDuty = async () => {
+    const next = !onDuty; setOnDuty(next);
+    try { const { onDuty: saved } = await setDuty(next); if (user) updateUser({ ...user, onDuty: saved }); }
+    catch { setOnDuty(!next); }
+  };
 
-  const initials = (user?.name || 'C').split(' ').map((n) => n[0]).join('');
+  const completed = jobs.filter((j) => j.status === 'completed');
+  const today = completed.filter((j) => isToday(j.updatedAt || j.createdAt));
+  const week = completed.filter((j) => isThisWeek(j.updatedAt || j.createdAt));
+  const todayEarn = today.reduce((s, j) => s + (j.fee || 0), 0);
+  const weekEarn = week.reduce((s, j) => s + (j.fee || 0), 0);
+  const acceptance = jobs.length ? Math.round((jobs.filter((j) => j.status !== 'declined').length / jobs.length) * 100) : 100;
+
+  const initials = (user?.name || 'C').split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase();
   const name = user?.name || (en ? 'Collector' : 'Collecteur');
-  const truck = user?.truck || (en ? 'No truck assigned' : 'Aucun camion assigné');
-  const zone = user?.zone || '—';
-  const daysActive = user?.createdAt
-    ? String(Math.floor((Date.now() - new Date(user.createdAt).getTime()) / 86400000))
-    : '—';
+  const vehicle = user?.truck || user?.vehicle || (en ? 'No vehicle assigned' : 'Aucun véhicule');
+  const rating = user?.rating ? Number(user.rating).toFixed(1) : null;
 
   const pickAvatar = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        en ? 'Permission needed' : 'Autorisation requise',
-        en ? 'Please allow access to your photo library.' : "Veuillez autoriser l'accès à votre galerie photo."
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
+    if (status !== 'granted') { Alert.alert(en ? 'Permission needed' : 'Autorisation requise', en ? 'Allow access to your photos.' : "Autorisez l'accès à vos photos."); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
     if (result.canceled) return;
-
     let base64;
-    try {
-      base64 = (await shrinkPhoto(result.assets[0], 512)).dataUrl;
-    } catch {
-      Alert.alert(en ? 'Photo problem' : 'Problème de photo', en ? 'Could not process the photo. Please try again.' : 'Impossible de traiter la photo. Veuillez réessayer.');
-      return;
-    }
+    try { base64 = (await shrinkPhoto(result.assets[0], 512)).dataUrl; }
+    catch { Alert.alert(en ? 'Photo problem' : 'Problème de photo'); return; }
     setUploading(true);
-    try {
-      await api.put('/collectors/me/avatar', { avatar: base64 }, { timeout: 30000 });
-      if (updateUser) updateUser({ ...user, avatar: base64 });
-      Alert.alert(en ? 'Success' : 'Succès', en ? 'Profile picture updated!' : 'Photo de profil mise à jour !');
-    } catch (err) {
-      let msg;
-      if (!err.response) {
-        msg = en
-          ? 'Your photo could not be uploaded. Check your internet connection and try again.'
-          : "Votre photo n'a pas pu être envoyée. Vérifiez votre connexion internet et réessayez.";
-      } else {
-        msg = en
-          ? `Failed to upload: ${err.response.data?.message || 'please try again.'}`
-          : "Échec de l'envoi de la photo. Veuillez réessayer.";
-      }
-      Alert.alert(en ? 'Upload failed' : "Échec de l'envoi", msg);
-    } finally {
-      setUploading(false);
-    }
+    try { await api.put('/collectors/me/avatar', { avatar: base64 }, { timeout: 30000 }); if (updateUser) updateUser({ ...user, avatar: base64 }); }
+    catch { Alert.alert(en ? 'Upload failed' : "Échec de l'envoi"); }
+    finally { setUploading(false); }
   };
 
-  return (
-    <LinearGradient colors={gradients.screenBgWarm} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <TealHeader title={en ? 'My Profile' : 'Mon profil'} />
+  const Stat = ({ label, value, accent }) => (
+    <View style={styles.statCard}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, accent && { color: '#15803d' }]}>{value}</Text>
+    </View>
+  );
 
-        {/* Profile Hero with real image */}
-        <View style={styles.heroSection}>
-          <View style={styles.heroBg}>
-            <Image
-              source={require('../assets/images/collector-hero.png')}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.35)']}
-              style={StyleSheet.absoluteFill}
-            />
-          </View>
-          <TouchableOpacity style={styles.avatarContainer} onPress={pickAvatar} activeOpacity={0.8}>
-            {user?.avatar ? (
-              <Image source={{ uri: user.avatar }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
-            )}
-            <View style={styles.cameraOverlay}>
-              {uploading ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <CameraIcon size={14} color="#fff" />
-              )}
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.name}>{name}</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{en ? 'FIELD COLLECTOR' : 'COLLECTEUR DE TERRAIN'}</Text>
-          </View>
-          <Text style={styles.meta}>{truck} · {zone} · <Text style={[styles.activeStatus, user?.status === 'on-leave' && { color: colors.warning }, user?.status === 'inactive' && { color: colors.critical }]}>{user?.status === 'on-leave' ? (en ? 'On Leave' : 'En congé') : user?.status === 'inactive' ? (en ? 'Inactive' : 'Inactif') : (en ? 'Active' : 'Actif')}</Text></Text>
+  const SettingRow = ({ icon, title, sub, onPress, danger, last }) => (
+    <TouchableOpacity style={[styles.setRow, !last && styles.setRowBorder]} onPress={onPress} activeOpacity={0.6}>
+      <View style={styles.rowTight}>
+        <View style={[styles.setIcon, danger && { backgroundColor: '#fee2e2' }]}>{icon}</View>
+        <View>
+          <Text style={[styles.setTitle, danger && { color: colors.critical }]}>{title}</Text>
+          {sub && <Text style={styles.setSub}>{sub}</Text>}
         </View>
+      </View>
+      <ChevronRightIcon size={16} color={danger ? '#fca5a5' : '#cbd5e1'} />
+    </TouchableOpacity>
+  );
 
-        {/* Stats Grid */}
-        {statsError ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorTitle}>{en ? "Couldn't load your stats" : 'Impossible de charger vos statistiques'}</Text>
-            <Text style={styles.errorText}>
-              {en ? 'Check your internet connection and try again.' : 'Vérifiez votre connexion internet et réessayez.'}
-            </Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={fetchStats}>
-              <Text style={styles.retryText}>{en ? 'Retry' : 'Réessayer'}</Text>
+  return (
+    <View style={styles.screen}>
+      {/* App bar */}
+      <View style={styles.appBar}>
+        <View style={styles.rowTight}><RecycleIcon size={24} color={BLUE} strokeWidth={3} /><Text style={styles.appBarTitle}>{en ? 'Profile' : 'Profil'}</Text></View>
+        <View style={styles.langSwitch}>
+          {['en', 'fr'].map((l) => (
+            <TouchableOpacity key={l} style={[styles.langOpt, language === l && styles.langOptActive]} onPress={() => selectLanguage(l)}>
+              <Text style={[styles.langText, language === l && { color: '#fff' }]}>{l.toUpperCase()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+        {/* Profile header */}
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <View style={[styles.rowTight, { flex: 1 }]}>
+              <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8}>
+                {user?.avatar ? <Image source={{ uri: user.avatar }} style={styles.avatarImg} /> : (
+                  <View style={styles.avatar}><Text style={styles.avatarText}>{initials}</Text></View>
+                )}
+                <View style={styles.camBadge}>{uploading ? <ActivityIndicator size="small" color="#fff" /> : <CameraIcon size={11} color="#fff" />}</View>
+                <View style={styles.onlineDot} />
+              </TouchableOpacity>
+              <View style={{ flex: 1 }}>
+                <View style={styles.rowTight}><Text style={styles.name}>{name}</Text><ShieldCheckIcon size={16} color={BLUE} /></View>
+                <Text style={styles.vehicle} numberOfLines={1}>{user?.operatorName || (en ? 'Field Collector' : 'Collecteur')} · {vehicle}</Text>
+                {rating && <View style={[styles.rowTight, { marginTop: 2, gap: 4 }]}><StarIcon size={14} color="#f59e0b" /><Text style={styles.ratingNum}>{rating}</Text>{user?.reviewCount ? <Text style={styles.ratingCount}>({user.reviewCount})</Text> : null}</View>}
+              </View>
+            </View>
+            <TouchableOpacity style={[styles.dutyToggle, onDuty ? styles.dutyOn : styles.dutyOff]} onPress={toggleDuty} activeOpacity={0.8}>
+              <View style={[styles.dutyKnob, onDuty ? { alignSelf: 'flex-end' } : { alignSelf: 'flex-start' }]}>
+                {onDuty ? <CheckIcon size={11} color="#16a34a" strokeWidth={3} /> : null}
+              </View>
             </TouchableOpacity>
           </View>
-        ) : (
-          <View style={styles.statsGrid}>
-            {[
-              { label: en ? 'BINS COLLECTED' : 'BACS COLLECTÉS', value: String(profileStats.bins) },
-              { label: en ? 'ASSIGNED BINS' : 'BACS ASSIGNÉS', value: String(profileStats.assigned) },
-              { label: en ? 'CRITICAL BINS' : 'BACS CRITIQUES', value: String(profileStats.issues) },
-              { label: en ? 'DAYS ACTIVE' : 'JOURS ACTIFS', value: daysActive },
-            ].map((stat) => (
-              <View key={stat.label} style={styles.statCard}>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-                <Text style={styles.statValue}>{stat.value}</Text>
+          <Text style={[styles.dutyLabel, { color: onDuty ? '#15803d' : colors.textMuted }]}>{onDuty ? (en ? 'On duty' : 'En service') : (en ? 'Off duty' : 'Hors service')}</Text>
+        </View>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          <Stat label={en ? 'Jobs today' : "Auj."} value={String(today.length)} />
+          <Stat label={en ? 'This week' : 'Semaine'} value={String(week.length)} />
+          <Stat label={en ? 'Acceptance' : 'Accept.'} value={`${acceptance}%`} accent />
+          <Stat label={en ? 'Rating' : 'Note'} value={rating || '—'} />
+        </View>
+
+        {/* Earnings hero */}
+        <View style={styles.card}>
+          <View style={styles.rowBetween}>
+            <View>
+              <Text style={styles.earnLabel}>{en ? "Today's earnings" : "Gains du jour"}</Text>
+              <View style={[styles.rowTight, { alignItems: 'baseline', gap: 4, marginTop: 2 }]}>
+                <Text style={styles.earnValue}>{todayEarn.toLocaleString()}</Text><Text style={styles.earnUnit}>FCFA</Text>
               </View>
-            ))}
+            </View>
+            <View style={styles.weekChip}>
+              <Text style={styles.weekChipLabel}>{en ? 'Week' : 'Semaine'}</Text>
+              <Text style={styles.weekChipValue}>{fcfa(weekEarn)}</Text>
+            </View>
           </View>
+          <View style={styles.remitBox}>
+            <View style={styles.rowTight}>
+              <View style={styles.remitIcon}><Text style={styles.remitIconText}>₣</Text></View>
+              <Text style={styles.remitLabel}>{en ? 'Cash to remit to operator' : 'Espèces à remettre'}</Text>
+            </View>
+            <View style={styles.rowTight}>
+              <Text style={styles.remitAmount}>{fcfa(todayEarn)}</Text>
+              <View style={styles.pendingPill}><Text style={styles.pendingText}>{en ? 'Pending' : 'En attente'}</Text></View>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.remitBtn} activeOpacity={0.9} onPress={() => Alert.alert(en ? 'Remit cash' : 'Remettre', en ? `Hand ${fcfa(todayEarn)} to your operator depot or transfer electronically.` : `Remettez ${fcfa(todayEarn)} au dépôt.`)}>
+            <Text style={styles.remitBtnText}>{en ? 'Remit cash to depot' : 'Remettre au dépôt'}</Text>
+            <ChevronRightIcon size={16} color="#fff" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent jobs */}
+        {completed.length > 0 && (
+          <>
+            <Text style={styles.groupLabel}>{en ? 'RECENT JOBS' : 'TRAVAUX RÉCENTS'}</Text>
+            <View style={styles.group}>
+              {completed.slice(0, 4).map((j, i, arr) => (
+                <View key={j._id} style={[styles.jobRow, i < arr.length - 1 && styles.setRowBorder]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.jobLoc} numberOfLines={1}>{j.location?.address || j.location?.zone || (en ? 'Pickup' : 'Ramassage')}</Text>
+                    <Text style={styles.jobMeta} numberOfLines={1}>{j.wasteType} · {j.loadSize || ''}</Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.jobFee}>{fcfa(j.fee)}</Text>
+                    <View style={styles.doneChip}><View style={styles.doneDot} /><Text style={styles.doneChipText}>{en ? 'Completed' : 'Terminé'}</Text></View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </>
         )}
 
-        {/* Performance */}
-        <View style={styles.perfSection}>
-          <View style={styles.perfInfo}>
-            <Text style={styles.perfTitle}>Performance</Text>
-            <Text style={styles.perfSubtitle}>{en ? 'Operational efficiency score' : "Score d'efficacité opérationnelle"}</Text>
-          </View>
-          <PerformanceCircle percentage={user?.efficiency ?? 0} />
+        {/* Vehicle & compliance */}
+        <Text style={styles.groupLabel}>{en ? 'VEHICLE & COMPLIANCE' : 'VÉHICULE & CONFORMITÉ'}</Text>
+        <View style={styles.group}>
+          {[
+            { t: en ? 'Driver License' : 'Permis', s: user?.licenseNo || 'BUA-DRV-2024', b: en ? 'Verified' : 'Vérifié' },
+            { t: en ? 'Assigned Vehicle' : 'Véhicule', s: vehicle, b: en ? 'Active' : 'Actif' },
+            { t: en ? 'Council Sector Permit' : 'Permis secteur', s: `${user?.zone || 'Molyko'} · Buea`, b: en ? 'Authorized' : 'Autorisé' },
+          ].map((c, i, arr) => (
+            <View key={c.t} style={[styles.setRow, i < arr.length - 1 && styles.setRowBorder]}>
+              <View style={styles.rowTight}>
+                <CheckIcon size={18} color="#16a34a" strokeWidth={2.5} />
+                <View><Text style={styles.setTitle}>{c.t}</Text><Text style={styles.setSub}>{c.s}</Text></View>
+              </View>
+              <View style={styles.verifiedPill}><Text style={styles.verifiedText}>{c.b}</Text></View>
+            </View>
+          ))}
         </View>
 
-        {/* Language */}
-        <View style={styles.langSection}>
-          <Text style={styles.langTitle}>{en ? 'Language' : 'Langue'}</Text>
-          <View style={styles.langSwitch}>
-            {['en', 'fr'].map((lang) => (
-              <TouchableOpacity
-                key={lang}
-                style={[styles.langOption, language === lang && styles.langOptionActive]}
-                onPress={() => selectLanguage(lang)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.langOptionText, language === lang && styles.langOptionTextActive]}>
-                  {lang.toUpperCase()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        {/* Settings */}
+        <Text style={styles.groupLabel}>{en ? 'SETTINGS' : 'PARAMÈTRES'}</Text>
+        <View style={styles.group}>
+          <SettingRow icon={<ClockIcon size={16} color={colors.text} />} title={en ? 'Availability & leave' : 'Disponibilité & congé'} sub={en ? 'Shift schedule & time off' : 'Horaire & congés'} onPress={() => navigation.navigate('Leave')} />
+          <SettingRow icon={<BellIcon size={16} color={colors.text} />} title={en ? 'Notifications & alerts' : 'Notifications'} sub={en ? 'Dispatch sound & vibration' : 'Sons & vibrations'} onPress={() => navigation.navigate('Notifications')} />
+          <SettingRow icon={<ShieldCheckIcon size={16} color={colors.text} />} title={en ? 'Change password' : 'Mot de passe'} sub={en ? 'Update your sign-in password' : 'Modifier le mot de passe'} onPress={() => navigation.navigate('ChangePassword')} />
+          <SettingRow icon={<ChatBubbleIcon size={16} color={colors.text} />} title={en ? 'Help & operator dispatch' : 'Aide & dispatch'} sub={en ? 'Supervisor hotline' : 'Ligne superviseur'} onPress={() => navigation.navigate('Chat')} last />
         </View>
 
-        {/* Featured Collection */}
-        <View style={styles.featuredSection}>
-          <Text style={styles.featuredLabel}>{en ? 'FEATURED COLLECTION' : 'COLLECTE EN VEDETTE'}</Text>
-          <View style={styles.featuredCard}>
-            <ImageBackground
-              source={require('../assets/images/truck-featured.png')}
-              style={styles.featuredImage}
-              resizeMode="cover"
-            >
-              <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.6)']}
-                style={styles.featuredGradient}
-              >
-                <Text style={styles.featuredTitle}>{en ? `${zone} Route` : `Itinéraire ${zone}`}</Text>
-                <Text style={styles.featuredMeta}>
-                  {statsError ? truck : `${profileStats.bins} ${en ? 'bins collected' : 'bacs collectés'} · ${truck}`}
-                </Text>
-              </LinearGradient>
-            </ImageBackground>
-          </View>
+        {/* Log out */}
+        <View style={styles.group}>
+          <SettingRow icon={<LogoutIcon size={16} color={colors.critical} />} title={en ? 'Log out of EcoPulse' : 'Déconnexion'} danger last
+            onPress={() => Alert.alert(en ? 'Sign Out' : 'Déconnexion', en ? 'Are you sure?' : 'Êtes-vous sûr ?', [{ text: en ? 'Cancel' : 'Annuler', style: 'cancel' }, { text: en ? 'Sign Out' : 'Déconnexion', style: 'destructive', onPress: logout }])}
+          />
         </View>
-
-        {/* Contact Supervisor */}
-        <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Chat')}>
-          <Text style={styles.contactText}>{en ? 'Chat with Admin' : "Discuter avec l'admin"}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('Leave')}>
-          <Text style={styles.contactText}>{en ? 'Request leave' : 'Demander un congé'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.contactButton} activeOpacity={0.8} onPress={() => navigation?.navigate?.('ChangePassword')}>
-          <Text style={styles.contactText}>{en ? 'Change password' : 'Modifier le mot de passe'}</Text>
-        </TouchableOpacity>
-
-        {/* Logout */}
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert(
-              en ? 'Sign Out' : 'Déconnexion',
-              en ? 'Are you sure you want to sign out?' : 'Voulez-vous vraiment vous déconnecter ?',
-              [
-                { text: en ? 'Cancel' : 'Annuler', style: 'cancel' },
-                { text: en ? 'Sign Out' : 'Se déconnecter', style: 'destructive', onPress: logout },
-              ]
-            );
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-            <LogoutIcon size={18} color="#ef4444" />
-            <Text style={styles.logoutText}>{en ? 'Sign Out' : 'Se déconnecter'}</Text>
-          </View>
-        </TouchableOpacity>
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { paddingBottom: 120 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  rowTight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 
-  // Header
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 55,
-    paddingBottom: 10,
-  },
-  backArrow: { fontSize: 22, color: colors.accent, fontWeight: '600' },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: colors.accent },
-  headerLogo: { width: 28, height: 28, borderRadius: 6 },
+  appBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, height: 60, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#eef2f9' },
+  appBarTitle: { fontSize: 19, fontWeight: '800', color: colors.text },
+  langSwitch: { flexDirection: 'row', backgroundColor: '#eef2f9', borderRadius: 10, padding: 3 },
+  langOpt: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  langOptActive: { backgroundColor: BLUE },
+  langText: { fontSize: 12, fontWeight: '800', color: colors.textSecondary },
 
-  // Hero
-  heroSection: { alignItems: 'center', marginBottom: 24 },
-  heroBg: {
-    width: '100%',
-    height: 140,
-    overflow: 'hidden',
-  },
-  heroImage: {
-    width: '100%',
-    height: 400,
-    position: 'absolute',
-    top: 0,
-    left: 0,
-  },
-  avatarContainer: { marginTop: -44 },
-  avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#fff',
-    ...shadows.cardHover,
-  },
-  avatarImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 4,
-    borderColor: '#fff',
-  },
-  cameraOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  cameraIcon: { },
-  avatarText: { fontSize: 30, fontWeight: '800', color: colors.accent },
-  name: { fontSize: 22, fontWeight: '800', color: colors.text, marginTop: 12 },
-  roleBadge: {
-    backgroundColor: colors.accentLight,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.accent,
-  },
-  roleText: { fontSize: 11, fontWeight: '700', color: colors.accent, letterSpacing: 1 },
-  meta: { fontSize: 13, color: colors.textSecondary, marginTop: 10 },
-  activeStatus: { color: colors.accent, fontWeight: '600' },
+  card: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#eef2f9', padding: 14, marginBottom: 12 },
+  avatar: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#dbeafe', alignItems: 'center', justifyContent: 'center' },
+  avatarImg: { width: 56, height: 56, borderRadius: 28 },
+  avatarText: { fontSize: 18, fontWeight: '800', color: BLUE },
+  camBadge: { position: 'absolute', bottom: -2, left: -2, width: 20, height: 20, borderRadius: 10, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  onlineDot: { position: 'absolute', bottom: 0, right: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#fff' },
+  name: { fontSize: 16, fontWeight: '800', color: colors.text },
+  vehicle: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+  ratingNum: { fontSize: 13, fontWeight: '700', color: colors.text },
+  ratingCount: { fontSize: 12, color: colors.textMuted },
+  dutyToggle: { width: 46, height: 26, borderRadius: 13, padding: 3, justifyContent: 'center' },
+  dutyOn: { backgroundColor: '#16a34a' },
+  dutyOff: { backgroundColor: '#cbd5e1' },
+  dutyKnob: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  dutyLabel: { fontSize: 11, fontWeight: '700', textAlign: 'right', marginTop: 6 },
 
-  // Stats Grid
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    gap: 10,
-    marginBottom: 20,
-  },
-  statCard: {
-    width: '47%',
-    backgroundColor: colors.cardGlass,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.1)',
-    padding: 16,
-    ...shadows.card,
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: colors.textMuted,
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  statValue: { fontSize: 26, fontWeight: '800', color: colors.text },
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  statCard: { flex: 1, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#eef2f9', paddingVertical: 10, alignItems: 'center' },
+  statLabel: { fontSize: 10, color: colors.textSecondary, textAlign: 'center' },
+  statValue: { fontSize: 18, fontWeight: '800', color: colors.text, marginTop: 2 },
 
-  // Load error
-  errorBox: {
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: colors.criticalLight,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    padding: 16,
-    alignItems: 'center',
-  },
-  errorTitle: { fontSize: 14, fontWeight: '700', color: '#991b1b' },
-  errorText: { fontSize: 12, color: '#b91c1c', textAlign: 'center', marginTop: 4, lineHeight: 17 },
-  retryBtn: { marginTop: 12, backgroundColor: colors.critical, borderRadius: 10, paddingHorizontal: 22, paddingVertical: 8 },
-  retryText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  earnLabel: { fontSize: 12, color: colors.textSecondary },
+  earnValue: { fontSize: 24, fontWeight: '800', color: '#15803d' },
+  earnUnit: { fontSize: 13, fontWeight: '700', color: '#15803d' },
+  weekChip: { backgroundColor: '#f8fafc', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'flex-end' },
+  weekChipLabel: { fontSize: 10, color: colors.textSecondary },
+  weekChipValue: { fontSize: 12, fontWeight: '700', color: colors.text },
+  remitBox: { backgroundColor: '#fffbeb', borderRadius: 10, padding: 10, marginTop: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  remitIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#fef3c7', alignItems: 'center', justifyContent: 'center' },
+  remitIconText: { fontSize: 14, fontWeight: '800', color: '#b45309' },
+  remitLabel: { fontSize: 12, fontWeight: '600', color: '#92400e' },
+  remitAmount: { fontSize: 14, fontWeight: '800', color: '#b45309' },
+  pendingPill: { backgroundColor: '#fde68a', borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 },
+  pendingText: { fontSize: 10, fontWeight: '700', color: '#92400e' },
+  remitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: BLUE, borderRadius: 12, paddingVertical: 12, marginTop: 10 },
+  remitBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 
-  // Performance
-  perfSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    backgroundColor: colors.cardGlass,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.1)',
-    padding: 20,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  perfInfo: { flex: 1 },
-  perfTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
-  perfSubtitle: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
-  perfValue: {
-    position: 'absolute',
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.accent,
-  },
+  groupLabel: { fontSize: 10, fontWeight: '700', color: colors.textMuted, letterSpacing: 1, marginBottom: 8, marginLeft: 4, marginTop: 4 },
+  group: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#eef2f9', overflow: 'hidden', marginBottom: 14 },
+  jobRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 11 },
+  jobLoc: { fontSize: 13, fontWeight: '700', color: colors.text },
+  jobMeta: { fontSize: 12, color: colors.textSecondary, marginTop: 1 },
+  jobFee: { fontSize: 13, fontWeight: '800', color: colors.text },
+  doneChip: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#ecfdf5', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 1, marginTop: 3 },
+  doneDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: '#22c55e' },
+  doneChipText: { fontSize: 10, fontWeight: '700', color: '#15803d' },
 
-  // Language
-  langSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginHorizontal: 20,
-    backgroundColor: colors.cardGlass,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(34,197,94,0.1)',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    marginBottom: 20,
-    ...shadows.card,
-  },
-  langTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
-  langSwitch: {
-    flexDirection: 'row',
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 3,
-  },
-  langOption: { paddingHorizontal: 16, paddingVertical: 7, borderRadius: 10 },
-  langOptionActive: { backgroundColor: colors.accent },
-  langOptionText: { fontSize: 13, fontWeight: '700', color: colors.textSecondary, letterSpacing: 0.5 },
-  langOptionTextActive: { color: '#fff' },
-
-  // Featured
-  featuredSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  featuredLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.textMuted,
-    letterSpacing: 1.5,
-    marginBottom: 10,
-  },
-  featuredCard: {
-    borderRadius: 18,
-    overflow: 'hidden',
-    height: 160,
-    ...shadows.cardHover,
-  },
-  featuredImage: {
-    width: '100%',
-    height: '100%',
-  },
-  featuredGradient: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    padding: 16,
-  },
-  featuredTitle: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  featuredMeta: { fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
-
-  // Contact
-  contactButton: {
-    marginHorizontal: 20,
-    borderRadius: 14,
-    borderWidth: 2,
-    borderColor: colors.accent,
-    padding: 16,
-    alignItems: 'center',
-    marginBottom: 12,
-    backgroundColor: 'rgba(34,197,94,0.04)',
-  },
-  contactText: { fontSize: 14, fontWeight: '700', color: colors.accent },
-
-  // Logout
-  logoutButton: {
-    alignItems: 'center',
-    padding: 14,
-    marginBottom: 20,
-  },
-  logoutText: { fontSize: 14, color: colors.textSecondary },
+  setRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, paddingVertical: 12 },
+  setRowBorder: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  setIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#eef2f9', alignItems: 'center', justifyContent: 'center' },
+  setTitle: { fontSize: 14, fontWeight: '600', color: colors.text },
+  setSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  verifiedPill: { backgroundColor: '#ecfdf5', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 },
+  verifiedText: { fontSize: 11, fontWeight: '700', color: '#15803d' },
 });
