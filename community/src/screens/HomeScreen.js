@@ -239,7 +239,7 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* On-demand pickup */}
-        <TouchableOpacity style={styles.pickupCard} activeOpacity={0.9} onPress={() => navigation.navigate('Operators')}>
+        <TouchableOpacity style={styles.pickupCard} activeOpacity={0.9} onPress={() => navigation.navigate('Pickup')}>
           <View style={styles.newBadge}><Text style={styles.newBadgeText}>{en ? 'NEW' : 'NOUVEAU'}</Text></View>
           <View style={[styles.rowBetween, { paddingRight: 40 }]}>
             <View style={styles.rowStart}>
@@ -269,7 +269,7 @@ export default function HomeScreen({ navigation }) {
 
             <View style={styles.card}>
               {pickup && ACTIVE_PICKUP.includes(pickup.status) && (
-                <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('Operators')}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => navigation.navigate('Pickup')}>
                   <View style={styles.rowBetween}>
                     <View style={styles.rowStart}>
                       <View style={styles.activityIcon}><TruckIcon size={20} color={BLUE} /></View>

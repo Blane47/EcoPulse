@@ -332,13 +332,7 @@ function MainTabs() {
           tabPress: (e) => { e.preventDefault(); navigation.navigate('ReportBin'); },
         })}
       />
-      <Tab.Screen
-        name="Pickup"
-        component={EmptyTab}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => { e.preventDefault(); navigation.navigate('Operators'); },
-        })}
-      />
+      <Tab.Screen name="Pickup" component={OperatorsScreen} />
       <Tab.Screen
         name="Chat"
         component={ChatScreen}
@@ -366,7 +360,6 @@ export default function AppNavigator() {
             <Stack.Screen name="ReportBin" component={ReportBinScreen} />
             <Stack.Screen name="Map" component={NearbyMapScreen} />
             <Stack.Screen name="ApplyCollector" component={ApplyCollectorScreen} />
-            <Stack.Screen name="Operators" component={OperatorsScreen} />
             <Stack.Screen name="Reports" component={MyReportsScreen} />
             <Stack.Screen name="Collections" component={ScheduleScreen} />
           </>
