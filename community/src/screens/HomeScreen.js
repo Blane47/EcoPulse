@@ -311,7 +311,7 @@ export default function HomeScreen({ navigation }) {
         {/* Next collection */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{en ? 'Next collection' : 'Prochaine collecte'}</Text>
-          <View style={[styles.card, styles.rowBetween, { marginTop: 10 }]}>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('Collections')} style={[styles.card, styles.rowBetween, { marginTop: 10 }]}>
             <View style={[styles.rowStart, { flex: 1 }]}>
               <View style={styles.activityIcon}><CalendarIcon size={20} color={BLUE} /></View>
               <View style={{ flex: 1 }}>
@@ -330,7 +330,7 @@ export default function HomeScreen({ navigation }) {
               trackColor={{ false: colors.cardBorder, true: BLUE }}
               thumbColor="#fff"
             />
-          </View>
+          </TouchableOpacity>
         </View>
 
         {/* Nearby bins */}
