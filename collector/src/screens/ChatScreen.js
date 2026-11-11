@@ -131,6 +131,11 @@ export default function ChatScreen({ navigation }) {
     <LinearGradient colors={gradients.screenBg} style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        {navigation?.canGoBack?.() && (
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <ArrowLeftIcon size={22} color={colors.accent} />
+          </TouchableOpacity>
+        )}
         <View style={styles.headerCenter}>
           <View style={styles.adminAvatar}>
             <Text style={styles.adminAvatarText}>A</Text>

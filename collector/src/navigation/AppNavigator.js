@@ -45,10 +45,12 @@ function HomeTabs() {
             <View style={{
               alignItems: 'center',
               justifyContent: 'center',
-              width: 44,
-              height: 32,
+              width: 48,
+              height: 30,
+              borderRadius: 15,
+              backgroundColor: focused ? '#eff6ff' : 'transparent',
             }}>
-              {Icon && <Icon size={22} color={focused ? '#fff' : 'rgba(255,255,255,0.5)'} />}
+              {Icon && <Icon size={22} color={focused ? '#2563eb' : '#94a3b8'} />}
             </View>
           );
         },
@@ -56,39 +58,25 @@ function HomeTabs() {
           <Text style={{
             fontSize: 10,
             fontWeight: focused ? '700' : '500',
-            color: focused ? '#fff' : 'rgba(255,255,255,0.5)',
-            letterSpacing: 0.5,
-            marginTop: -2,
+            color: focused ? '#2563eb' : '#94a3b8',
+            letterSpacing: 0.4,
+            marginTop: 1,
           }}>
             {en ? tabConfig[route.name]?.en : tabConfig[route.name]?.fr}
           </Text>
         ),
-        tabBarBackground: () => (
-          <View
-            style={{
-              position: 'absolute',
-              top: 0, left: 0, right: 0, bottom: 0,
-              borderRadius: 32,
-              backgroundColor: '#1a1a2e',
-            }}
-          />
-        ),
         tabBarStyle: {
-          position: 'absolute',
-          bottom: 0,
-          left: 20,
-          right: 20,
-          height: 64,
+          height: 66,
           paddingBottom: 8,
           paddingTop: 8,
-          borderTopWidth: 0,
-          backgroundColor: 'transparent',
-          borderRadius: 32,
-          elevation: 12,
+          borderTopWidth: 1,
+          borderTopColor: '#e5e7eb',
+          backgroundColor: '#ffffff',
+          elevation: 8,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: 0.3,
-          shadowRadius: 16,
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.05,
+          shadowRadius: 8,
         },
       })}
     >
